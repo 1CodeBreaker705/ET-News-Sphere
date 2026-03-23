@@ -107,9 +107,8 @@ npm run dev
 
 ## 🤝 Team Bit by Bit
 
-- **Aryan Silswal** — Backend Architect & AI Agent Engineer
-- **Ranjan Singh** — Frontend Lead & UI/UX Designer
-
+- **Aryan Silswal** 
+- **Ranjan Singh** 
 ---
 
 _Built with ❤️ for the ET Gen AI Hackathon 2026_
