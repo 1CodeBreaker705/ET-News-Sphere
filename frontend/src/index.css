@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased selection:bg-red-500/30 font-['Outfit',sans-serif];
+    background-color: #0f1115;
+    color: #d1d5db;
+    overflow-x: hidden;
+    width: 100%;
+  }
+  
+  /* Global reset for the 'white border' glitch */
+  *, *:focus, *:active, *:focus-visible, 
+  button:focus, button:active, 
+  .group:focus, .group:active,
+  div, section, main, article {
+    outline: none !important;
+    outline-width: 0 !important;
+    box-shadow: none !important;
+    --tw-ring-offset-width: 0px !important;
+    --tw-ring-width: 0px !important;
+    -webkit-tap-highlight-color: transparent !important;
+    border-color: transparent; /* Default all borders to transparent unless specified */
+  }
+  
+  /* Restore visible specific borders with lower contrast */
+  .border, .border-b, .border-t, .border-l, .border-r {
+    border-color: rgba(31, 41, 55, 0.5) !important;
+  }
+  
+  /* Prevent scroll artifacts on cards */
+  .group {
+    backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  a, button {
+    @apply transition-all duration-300;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .animate-in {
+    animation-duration: 500ms;
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .fade-in {
+    animation-name: fadeIn;
+  }
+
+  .zoom-in-95 {
+    animation-name: zoomIn95;
+  }
+
+  .slide-in-from-top-4 {
+    animation-name: slideInFromTop4;
+  }
+
+  .slide-in-from-bottom-4 {
+    animation-name: slideInFromBottom4;
+  }
+
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .duration-700 {
+    animation-duration: 700ms;
+  }
+
+  .duration-1000 {
+    animation-duration: 1000ms;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes zoomIn95 {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes slideInFromTop4 {
+    from { opacity: 0; transform: translateY(-1rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideInFromBottom4 {
+    from { opacity: 0; transform: translateY(1rem); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

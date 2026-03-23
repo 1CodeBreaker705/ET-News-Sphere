@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+supabase==2.7.0
+pyjwt
+sqlalchemy
+pydantic
+python-dotenv
+feedparser
+beautifulsoup4
+requests
+langchain
+langchain-google-genai
+langgraph
+qdrant-client
+tenacity
