@@ -65,7 +65,7 @@ Powered by **LangGraph**, our system uses a sophisticated multi-agent workflow:
 
 - **Frontend**: React (Vite) + Tailwind CSS. A premium "Glassmorphism" Dark Mode UI designed for 2026.
 - **Backend**: Python (FastAPI) & LangGraph for logic.
-- **AI Core**: Google Gemini 1.5 Pro & Gemini Embeddings (`embedding-001`).
+- **AI Core**: Google Gemini 3.1 Flash Lite & Gemini Embeddings (`embedding-001`).
 - **Database**:
   - **Qdrant**: High-performance Vector Database for Semantic Search and RAG.
   - **Supabase**: PostgreSQL for user profiles, JWT Authentication, and "Profile" storage.
