@@ -16,8 +16,17 @@ def get_qdrant_client() -> QdrantClient:
     global _client
     if _client is None:
         try:
-            # Persistent local storage
-            _client = QdrantClient(path="./qdrant_db")
+            qdrant_url = os.getenv("QDRANT_URL")
+            qdrant_api_key = os.getenv("QDRANT_API_KEY")
+
+            if qdrant_url and qdrant_api_key:
+                # Connect to Qdrant Cloud
+                print(f"Connecting to Qdrant Cloud at {qdrant_url}...")
+                _client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+            else:
+                # Persistent local storage
+                print("Using local Qdrant database (./qdrant_db)...")
+                _client = QdrantClient(path="./qdrant_db")
             
             # Setup collection if missing
             if not _client.collection_exists(COLLECTION_NAME):

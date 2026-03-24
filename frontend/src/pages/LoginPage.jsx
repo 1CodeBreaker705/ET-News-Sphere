@@ -35,26 +35,21 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0f1115] flex items-center justify-center p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#0f1115] flex flex-col items-center justify-start pt-4 md:pt-12 p-6 relative overflow-hidden font-sans">
       {/* Dynamic Background Accents */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-red-600/10 blur-[120px] rounded-full"></div>
 
       <div className="max-w-[450px] w-full z-10">
         {/* Logo Section */}
-        <div className="flex flex-col items-center mb-16 animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="relative flex items-center justify-center w-24 h-24 mb-6 group">
-            <div className="absolute inset-0 bg-red-900/20 rounded-3xl blur-xl group-hover:bg-red-900/30 transition-all duration-500"></div>
-            <div className="relative bg-[#161920] w-full h-full rounded-3xl border border-white/5 flex items-center justify-center shadow-2xl">
-              <Globe className="w-12 h-12 text-gray-300" strokeWidth={1.5} />
-              <div className="absolute inset-x-[-15%] top-1/2 -translate-y-1/2 h-5 bg-red-900 z-20 shadow-[0_4px_12px_rgba(0,0,0,0.4)] flex items-center justify-center rounded-sm border border-red-800">
-                 <span className="text-[9px] font-black text-gray-100 tracking-[0.2em] uppercase">NEWS</span>
-              </div>
-            </div>
+        <div className="flex flex-col items-center mb-4 animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="flex items-center justify-center mb-2 group">
+            <img 
+              src="/logo.png" 
+              alt="ET News-Sphere Logo" 
+              className="h-32 md:h-40 w-auto scale-[1.8] origin-center object-contain drop-shadow-2xl" 
+            />
           </div>
-          <h1 className="text-5xl font-black text-gray-100 tracking-tighter mb-3">
-            ET News-Sphere
-          </h1>
           <p className="text-gray-500 font-bold uppercase tracking-[0.4em] text-xs">
             Intelligence Reimagined
           </p>
@@ -92,7 +87,7 @@ const LoginPage = () => {
                 type="email"
                 required
                 className="w-full bg-[#0f1115] border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-white text-sm font-bold placeholder-gray-700 focus:outline-none focus:border-red-500/40 transition-all"
-                placeholder="Institutional Email"
+                placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
@@ -103,7 +98,7 @@ const LoginPage = () => {
                 type="password"
                 required
                 className="w-full bg-[#0f1115] border border-white/5 rounded-2xl py-4 pl-12 pr-6 text-white text-sm font-bold placeholder-gray-700 focus:outline-none focus:border-red-500/40 transition-all"
-                placeholder="Access Key"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -139,7 +134,7 @@ const LoginPage = () => {
               <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.26-5.64c-2.21 1.49-5.04 2.37-8.63 2.37-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             </svg>
-            <span>Google Intelligence</span>
+            <span>Google Login</span>
           </button>
 
           <div className="text-center mt-10">
@@ -148,7 +143,7 @@ const LoginPage = () => {
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-[10px] font-black text-gray-500 hover:text-red-500 transition-colors uppercase tracking-[0.2em]"
             >
-              {isSignUp ? 'Already a strategist? Sign In' : "New Operator? Create Account"}
+              {isSignUp ? 'Already a strategist? Sign In' : "New User? Create Account"}
             </button>
           </div>
         </div>
