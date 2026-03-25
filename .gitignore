@@ -1,27 +1,62 @@
-# --- Global Python Ignores ---
-**/__pycache__/
-*.py[cod]
-*$py.class
-venv/
-.env
-
-# --- Global Node Ignores ---
+# Node.js / React / Vite
 node_modules/
 dist/
-.env.local
-.env.*.local
+dist-ssr/
+*.local
+dist/
+build/
+.cache/
+.parcel-cache/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# --- Project Specific Ignores ---
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.python-version
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.nox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.hypothesis/
+.pytest_cache/
+*.db
+*.sqlite
+
+# Project Specific
 backend/qdrant_db/
-backend/venv/
-backend/.env
+backend/__pycache__/
 frontend/node_modules/
 frontend/dist/
-frontend/.env
 
-# --- System Ignores ---
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.project
+.settings/
+.classpath
+
+# OS files
 .DS_Store
 Thumbs.db
+desktop.ini
