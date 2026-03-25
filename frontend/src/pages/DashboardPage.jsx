@@ -5,7 +5,7 @@ import { getTranslation } from '../lib/translations';
 import ReactMarkdown from 'react-markdown';
 import {
   RefreshCw, Search, User, Globe, LogOut, Loader2, Settings,
-  LayoutGrid, BookOpen, ChevronRight, ArrowLeft, Zap, Star
+  LayoutGrid, BookOpen, ChevronRight, ArrowLeft, Zap, Star, ChevronUp
 } from 'lucide-react';
 
 const DashboardPage = () => {
@@ -36,6 +36,7 @@ const DashboardPage = () => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [isFeedLoading, setIsFeedLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const showToast = (message, isError = false) => {
     setToastMessage({ text: message, isError });
@@ -89,6 +90,22 @@ const DashboardPage = () => {
 
     return () => { isMounted = false; };
   }, [user]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     if (isOnboarded && activeTab === 'feed') {
@@ -468,31 +485,31 @@ const DashboardPage = () => {
       {/* Premium Header */}
       <header className="sticky top-0 z-40 bg-[#161920]/80 backdrop-blur-xl border-b border-gray-800/50">
         <div className="max-w-[1600px] mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center space-x-6 md:space-x-10 lg:space-x-24">
-            <div className="flex items-center space-x-3 group cursor-pointer shrink-0" onClick={() => { setActiveTab('feed'); setSelectedArticle(null); }}>
+          <div className="flex items-center space-x-2 md:space-x-10 lg:space-x-24">
+            <div className="hidden lg:flex items-center space-x-3 group cursor-pointer shrink-0" onClick={() => { setActiveTab('feed'); setSelectedArticle(null); }}>
               <img src="/logo.png" alt="ET News-Sphere Logo" className="h-12 md:h-14 lg:h-20 w-auto scale-[1.75] md:scale-[2.15] origin-left object-contain group-hover:scale-[1.85] md:group-hover:scale-[2.4] transition-transform duration-300 filter drop-shadow-xl" />
             </div>
 
-            <nav className="hidden md:flex items-center space-x-1 bg-gray-900/50 p-1 rounded-xl border border-gray-800">
+            <nav className="flex items-center space-x-1 bg-gray-900/50 p-1 rounded-xl border border-gray-800">
               <button
                 onClick={() => { setActiveTab('feed'); setSelectedArticle(null); }}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl transition-all duration-300 focus:outline-none focus:ring-0 select-none ${activeTab === 'feed' ? 'bg-red-900/40 text-red-400 border border-red-800/30 shadow-[0_8px_20px_rgba(0,0,0,0.3)]' : 'text-gray-500 hover:text-gray-300 border-0 border-transparent shadow-none bg-transparent'}`}
+                className={`flex items-center space-x-2 px-3 md:px-5 py-2 md:py-2.5 rounded-2xl transition-all duration-300 focus:outline-none focus:ring-0 select-none ${activeTab === 'feed' ? 'bg-red-900/40 text-red-400 border border-red-800/30 shadow-[0_8px_20px_rgba(0,0,0,0.3)]' : 'text-gray-500 hover:text-gray-300 border-0 border-transparent shadow-none bg-transparent'}`}
               >
-                <LayoutGrid className="w-5 h-5" />
-                <span className="text-sm font-black uppercase tracking-widest leading-none">{t('myFeed')}</span>
+                <LayoutGrid className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-[10px] md:text-sm font-black uppercase tracking-widest leading-none">{t('myFeed')}</span>
               </button>
               <button
                 onClick={() => { setActiveTab('briefing'); setSelectedArticle(null); }}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-2xl transition-all duration-300 focus:outline-none focus:ring-0 select-none ${activeTab === 'briefing' ? 'bg-red-900/40 text-red-400 border border-red-800/30 shadow-[0_8px_20px_rgba(0,0,0,0.3)]' : 'text-gray-500 hover:text-gray-300 border-0 border-transparent shadow-none bg-transparent'}`}
+                className={`flex items-center space-x-2 px-3 md:px-5 py-2 md:py-2.5 rounded-2xl transition-all duration-300 focus:outline-none focus:ring-0 select-none ${activeTab === 'briefing' ? 'bg-red-900/40 text-red-400 border border-red-800/30 shadow-[0_8px_20px_rgba(0,0,0,0.3)]' : 'text-gray-500 hover:text-gray-300 border-0 border-transparent shadow-none bg-transparent'}`}
               >
-                <Zap className="w-5 h-5" />
-                <span className="text-sm font-black uppercase tracking-widest">{t('deepDiveBriefings')}</span>
+                <Zap className="w-4 h-4 md:w-5 md:h-5" />
+                <span className="text-[10px] md:text-sm font-black uppercase tracking-widest">{t('deepDiveBriefings')}</span>
               </button>
             </nav>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden lg:flex items-center space-x-3">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="hidden sm:flex items-center space-x-3">
               <div className="flex flex-col items-end">
                 <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">{t('iAmA')}</span>
                 <span className="text-sm font-bold text-gray-200">
@@ -506,7 +523,7 @@ const DashboardPage = () => {
               <button
                 onClick={handleRefreshNews}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-blue-500/20"
+                className="hidden lg:flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-blue-500/20"
               >
                 <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}
@@ -534,6 +551,19 @@ const DashboardPage = () => {
       </header>
 
       <main className="flex-1 max-w-[1600px] w-full mx-auto px-6 py-8 border-0 outline-none ring-0 focus:outline-none focus:ring-0">
+        {/* Mobile Refresh Button - Below Navbar */}
+        <div className="lg:hidden mb-10 flex justify-start">
+          <button
+            onClick={handleRefreshNews}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-blue-500/20"
+          >
+            <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="text-sm">
+              {isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}
+            </span>
+          </button>
+        </div>
         {selectedArticle ? (
           /* Full Article View */
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto bg-[#161920] rounded-3xl border border-gray-800/50 shadow-2xl overflow-hidden flex flex-col">
@@ -837,24 +867,24 @@ const DashboardPage = () => {
       {/* Settings Modal Layer (Upgraded) */}
       {isEditingPreferences && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="max-w-md w-full bg-[#161920] p-10 rounded-[2.5rem] border border-gray-800 shadow-2xl relative animate-in zoom-in-95 duration-300">
+          <div className="max-w-md w-full bg-[#161920] p-6 sm:p-10 rounded-[2.5rem] border border-gray-800 shadow-2xl relative animate-in zoom-in-95 duration-300">
             <button
               onClick={() => setIsEditingPreferences(false)}
-              className="absolute top-6 right-6 w-8 h-8 flex items-center justify-center bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 w-8 h-8 flex items-center justify-center bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
             >
               ✕
             </button>
-            <h2 className="text-4xl font-black text-gray-100 mb-3 tracking-tight">{t('updatePrefs')}</h2>
-            <p className="text-gray-500 text-base font-medium mb-10">{t('refineIdentity')}</p>
+            <h2 className="text-2xl sm:text-4xl font-black text-gray-100 mb-2 sm:mb-3 tracking-tight">{t('updatePrefs')}</h2>
+            <p className="text-gray-500 text-sm sm:text-base font-medium mb-6 sm:mb-10">{t('refineIdentity')}</p>
 
-            <form className="space-y-10" onSubmit={handleOnboardingSubmit}>
-              <div className="space-y-8">
-                <div className="space-y-4">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] pl-1">{t('iAmA')}</label>
+            <form className="space-y-6 sm:space-y-10" onSubmit={handleOnboardingSubmit}>
+              <div className="space-y-6 sm:space-y-8">
+                <div className="space-y-2 sm:space-y-4">
+                  <label className="block text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-[0.2em] pl-1">{t('iAmA')}</label>
                   <select
                     value={persona}
                     onChange={(e) => setPersona(e.target.value)}
-                    className="w-full bg-[#0f1115] border border-gray-800 rounded-2xl py-5 px-6 text-gray-200 text-base focus:outline-none focus:border-red-900/50 focus:ring-4 focus:ring-red-900/10 transition-all font-bold"
+                    className="w-full bg-[#0f1115] border border-gray-800 rounded-2xl py-3 sm:py-5 px-4 sm:px-6 text-gray-200 text-sm sm:text-base focus:outline-none focus:border-red-900/50 focus:ring-4 focus:ring-red-900/10 transition-all font-bold"
                   >
                     <option value="Student">{t('student')}</option>
                     <option value="Startup Founder">{t('startupFounder')}</option>
@@ -865,12 +895,12 @@ const DashboardPage = () => {
                     <option value="Financial Advisor">{t('financialAdvisor')}</option>
                   </select>
                 </div>
-                <div className="space-y-4">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-[0.2em] pl-1">{t('prefLang')}</label>
+                <div className="space-y-2 sm:space-y-4">
+                  <label className="block text-[10px] sm:text-xs font-black text-gray-500 uppercase tracking-[0.2em] pl-1">{t('prefLang')}</label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full bg-[#0f1115] border border-gray-800 rounded-2xl py-5 px-6 text-gray-200 text-base focus:outline-none focus:border-red-900/50 focus:ring-4 focus:ring-red-900/10 transition-all font-bold"
+                    className="w-full bg-[#0f1115] border border-gray-800 rounded-2xl py-3 sm:py-5 px-4 sm:px-6 text-gray-200 text-sm sm:text-base focus:outline-none focus:border-red-900/50 focus:ring-4 focus:ring-red-900/10 transition-all font-bold"
                   >
                     <option value="English">English</option>
                     <option value="Hindi">Hindi</option>
@@ -883,7 +913,7 @@ const DashboardPage = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex justify-center py-5 px-8 border border-transparent rounded-2xl shadow-xl text-sm font-black text-white bg-red-900/80 hover:bg-red-800 transition-all disabled:opacity-50 uppercase tracking-widest mb-4"
+                className="w-full flex justify-center py-4 sm:py-5 px-6 sm:px-8 border border-transparent rounded-2xl shadow-xl text-sm font-black text-white bg-red-900/80 hover:bg-red-800 transition-all disabled:opacity-50 uppercase tracking-widest mb-2 sm:mb-4"
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('saveChanges')}
               </button>
@@ -897,6 +927,17 @@ const DashboardPage = () => {
         <div className={`fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-2xl flex items-center space-x-3 transition-opacity duration-300 animate-in slide-in-from-bottom-5 ${toastMessage.isError ? 'bg-red-900 border border-red-500 text-white' : 'bg-green-900 border border-green-500 text-white'}`}>
           <span className="font-bold text-sm tracking-wide">{toastMessage.text}</span>
         </div>
+      )}
+
+      {/* Back to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 p-4 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-2xl transition-all duration-300 animate-in fade-in zoom-in slide-in-from-bottom-5 z-50 border border-red-500/50 group"
+          title="Back to Top"
+        >
+          <ChevronUp className="w-6 h-6 group-hover:-translate-y-1 transition-transform" />
+        </button>
       )}
     </div>
   );
