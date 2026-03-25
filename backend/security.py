@@ -32,7 +32,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             user_obj = response.user
             if not user_obj:
                 raise HTTPException(status_code=401, detail="Invalid token")
-            return {"sub": user_obj.id, "email": user_obj.email, "user_metadata": user_obj.user_metadata}
+            return {"sub": user_obj.id, "email": user_obj.email, "user_metadata": user_obj.user_metadata, "access_token": token}
         except Exception as e:
             raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
 
@@ -51,7 +51,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         return {
             "sub": payload.get("sub"),
             "email": payload.get("email"),
-            "user_metadata": payload.get("user_metadata", {})
+            "user_metadata": payload.get("user_metadata", {}),
+            "access_token": token
         }
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
@@ -66,7 +67,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
                     return {
                         "sub": user_obj.id,
                         "email": user_obj.email,
-                        "user_metadata": user_obj.user_metadata
+                        "user_metadata": user_obj.user_metadata,
+                        "access_token": token
                     }
             except Exception as network_err:
                 raise HTTPException(
