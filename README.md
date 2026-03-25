@@ -9,11 +9,7 @@
 
 ## 🚩 The Problem Statement
 
-> "Business news in 2026- [x] Achieve Ultimate Feed Diversity (13 Categories / 8 Articles each = 104 Targets)
-- [x] Migrate to 100% Google Cloud Embeddings (3072-dim Schema Optimized)
-- [x] Application servers ready for presentation 🚀
-
-> "I can't go back to reading news the old way."
+> "Business news in 2026 is still delivered like it's 2005 — static text articles, one-size-fits-all homepage, same format for everyone. Build something that makes people say 'I can't go back to reading news the old way.'"
 
 ---
 
@@ -32,7 +28,7 @@ We don't just "filter" your news; we fundamentally reshape it based on your **Pe
 
 Say goodbye to tab-fatigue. Instead of reading 8 separate articles about a major event (like a Union Budget), users interact with a single **LangGraph-powered Deep Briefing**.
 
-- **Synthesis-First**: Merges coverage from across the Economic Times ecosystem into one cohesive, explorable document (Balanced at **3 high-fidelity sources** for ultra-fast synthesis).
+- **Synthesis-First**: Merges coverage from across the Economic Times ecosystem into one cohesive, explorable document.
 - **Factual Citations**: Every claim is anchored with citations back to the original ET coverage.
 
 ### 3. 🌏 Vernacular Business News Engine
@@ -40,7 +36,7 @@ Say goodbye to tab-fatigue. Instead of reading 8 separate articles about a major
 True financial inclusion requires language-native understanding, not just translation.
 
 - **Contextual localization**: Real-time translation into **Hindi, Tamil, Telugu, and Bengali**.
-- **Cultural Adaptation**: Our LLM agents explain Western financial concepts with Hindi, Tamil, Telugu, and Bengali context, bridging the literacy gap.
+- **Cultural Adaptation**: Our LLM agents explain Western financial concepts with local context and analogies, bridging the literacy gap.
 
 ---
 
@@ -69,13 +65,11 @@ Powered by **LangGraph**, our system uses a sophisticated multi-agent workflow:
 
 - **Frontend**: React (Vite) + Tailwind CSS. A premium "Glassmorphism" Dark Mode UI designed for 2026.
 - **Backend**: Python (FastAPI) & LangGraph for logic.
-- **AI Core**: Google **Gemini 3.1 Flash Lite** (Flagship Preview) & Gemini Embeddings (`gemini-embedding-2-preview`).
-- **Memory Layer**: 100% Cloud-Powered Intelligence via **Google Embeddings API** (`models/gemini-embedding-2-preview`). 3072-dimensional vector space for maximum semantic precision. No local models or heavy dependencies.
-- **Security**: Offline JWT Decoding for zero-latency authentication.
+- **AI Core**: Google Gemini 3.1 Flash Lite & Gemini Embeddings (`embedding-001`).
 - **Database**:
-  - **Qdrant**: High-performance Local Vector Database for Semantic Search and RAG.
-  - **Supabase**: PostgreSQL for user profiles and persistent "Profile" storage.
-- **Data Pipeline**: Real-time batch-scraping of **104+ daily targeted items** (13 news categories including *Software* and *Panache*). We prioritize professional **OG (Open Graph) Descriptions** and **Synopsis** boxes to ensure a perfect summary experience even when RSS counts are low.
+  - **Qdrant**: High-performance Vector Database for Semantic Search and RAG.
+  - **Supabase**: PostgreSQL for user profiles, JWT Authentication, and "Profile" storage.
+- **Data Pipeline**: Real-time BeautifulSoup scraping of 140+ daily articles. We prioritize professional **OG (Open Graph) Descriptions** and **Synopsis** boxes to ensure a perfect summary experience even when RSS counts are low.
 
 ---
 
@@ -95,9 +89,8 @@ Follow these steps to experience the future of news on your local machine.
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt 
-
-# Create a .env file with your GEMINI_API_KEY (or GOOGLE_API_KEY) and SUPABASE constants
+pip install -r requirements.txt
+# Create a .env file with your GEMINI_API_KEY and SUPABASE constants
 python -m uvicorn main:app --reload
 ```
 

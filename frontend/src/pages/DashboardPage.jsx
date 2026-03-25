@@ -21,7 +21,6 @@ const DashboardPage = () => {
   const [briefingContent, setBriefingContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [ingestionStatus, setIngestionStatus] = useState({ status: 'idle', scanned_count: 0, processed_count: 0 });
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
 
@@ -48,46 +47,28 @@ const DashboardPage = () => {
   const getApiUrl = () => import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
   useEffect(() => {
-    let isMounted = true;
-    
+    // Check if user is already onboarded
     const checkUserStatus = async () => {
-      try {
-        if (!user) {
-          if (isMounted) setInitialCheckDone(true);
-          return;
-        }
-
-        // Add extreme fallback timeout to prevent infinite spinner
-        const timeoutFallback = setTimeout(() => {
-          if (isMounted && !initialCheckDone) {
-             console.warn("Supabase fetch took too long. Forcing app to initialize.");
-             setInitialCheckDone(true);
-          }
-        }, 4000);
-
-        const { data, error } = await supabase
-          .from('users')
-          .select('persona, preferred_language')
-          .eq('id', user.id)
-          .single();
-
-        clearTimeout(timeoutFallback);
-
-        if (data && isMounted) {
-          setPersona(data.persona || 'Student');
-          setLanguage(data.preferred_language || 'English');
-          setIsOnboarded(true);
-        }
-      } catch (err) {
-        console.error("User status check failed:", err);
-      } finally {
-        if (isMounted) setInitialCheckDone(true);
+      if (!user) {
+        setInitialCheckDone(true);
+        return;
       }
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('persona, preferred_language')
+        .eq('id', user.id)
+        .single();
+
+      if (data) {
+        setPersona(data.persona || 'Student');
+        setLanguage(data.preferred_language || 'English');
+        setIsOnboarded(true);
+      }
+      setInitialCheckDone(true);
     };
 
     checkUserStatus();
-    
-    return () => { isMounted = false; };
   }, [user]);
 
   useEffect(() => {
@@ -100,20 +81,16 @@ const DashboardPage = () => {
     setIsFeedLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setIsFeedLoading(false);
-        return;
-      }
+      if (!session) return;
 
-      const response = await fetch(`${getApiUrl()}/api/recommendations?persona=${persona}&limit=15&target_language=${language}`, {
+      const response = await fetch(`${getApiUrl()}/api/recommendations?persona=${persona}&limit=15`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }
       });
       const data = await response.json();
       if (response.ok) {
-        // Backend returns a direct list of articles
-        setRecommendedArticles(Array.isArray(data) ? data : []);
+        setRecommendedArticles(data.articles || []);
       }
     } catch (error) {
       console.error("Error fetching recommendations:", error);
@@ -174,9 +151,6 @@ const DashboardPage = () => {
     setBriefingContent('');
     setFollowUpChat([]);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 130000); // 130s overall timeout
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -191,8 +165,7 @@ const DashboardPage = () => {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ topic: briefingTopic }),
-        signal: controller.signal
+        body: JSON.stringify({ topic: briefingTopic })
       });
 
       const data = await response.json();
@@ -201,31 +174,18 @@ const DashboardPage = () => {
         setActiveTopic(data.topic || briefingTopic);
         setBriefingImage(data.image_url);
       } else {
-        const errorMsg = data.detail || 'Failed to generate briefing';
-        if (errorMsg.includes('429')) {
-             setBriefingContent(`*The AI Oracle is currently at peak capacity (Rate Limit Hit). Please wait 10 seconds and try again.*`);
-        } else {
-             setBriefingContent(`*Error: ${errorMsg}*`);
-        }
+        setBriefingContent(`*Error: ${data.detail || 'Failed to generate briefing'}*`);
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
-        showToast("Request timed out. The agent is still working in the background, please try again in a minute.", true);
-        setBriefingContent('*Error: Briefing generation timed out. Please try again soon.*');
-      } else {
-        console.error("Error generating briefing:", error);
-        setBriefingContent('*Error: Could not connect to the server.*');
-      }
+      console.error("Error generating briefing:", error);
+      setBriefingContent('*Error: Could not connect to the server.*');
     } finally {
-      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
 
-  const handleRefreshNews = async () => {
+  const refreshNews = async () => {
     setIsRefreshing(true);
-    setIngestionStatus({ status: 'running', processed_count: 0, scanned_count: 0 });
-    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -235,52 +195,24 @@ const DashboardPage = () => {
       }
 
       const response = await fetch(`${getApiUrl()}/api/trigger_ingestion`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${session.access_token}` },
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.ok) {
-        showToast("Live News Extraction Started in Background!");
-        
-        // Start Polling for Status
-        let lastCount = 0;
-        const pollInterval = setInterval(async () => {
-          try {
-            const statusRes = await fetch(`${getApiUrl()}/api/ingestion_status`, {
-              headers: { "Authorization": `Bearer ${session.access_token}` },
-            });
-            const statusData = await statusRes.json();
-            
-            setIngestionStatus(statusData);
-            
-            if (statusData.processed_count > lastCount) {
-               fetchRecommendations();
-               lastCount = statusData.processed_count;
-            }
-            
-            if (statusData.status === 'completed' || statusData.status === 'failed' || statusData.status === 'idle') {
-              clearInterval(pollInterval);
-              setIsRefreshing(false);
-              if (statusData.status === 'completed') {
-                  showToast(`Ingestion Complete! Added ${statusData.processed_count} articles.`);
-              } else if (statusData.status === 'idle') {
-                  showToast("Ingestion was interrupted by a server restart. Please try again.", true);
-              }
-            }
-          } catch (err) {
-            console.error("Polling error:", err);
-            clearInterval(pollInterval);
-            setIsRefreshing(false);
-          }
-        }, 3000);
+        showToast("News refreshed and vectorized successfully!");
+        // Re-fetch recommendations to show new articles/summaries immediately
+        fetchRecommendations();
       } else {
-        setIsRefreshing(false);
-        showToast("Failed to start ingestion", true);
+        showToast("Failed to refresh news.", true);
       }
     } catch (error) {
+      console.error("Error refreshing news:", error);
+    } finally {
       setIsRefreshing(false);
-      console.error("Refresh error:", error);
-      showToast("An error occurred during refresh.", true);
     }
   };
 
@@ -293,9 +225,6 @@ const DashboardPage = () => {
     setFollowUpChat(newChat);
     setFollowUpQuery('');
     setIsFollowUpLoading(true);
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 70000); // 70s overall timeout
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -318,8 +247,7 @@ const DashboardPage = () => {
           context_text: contextText,
           query: userMsg.text,
           history: newChat
-        }),
-        signal: controller.signal
+        })
       });
 
       const data = await response.json();
@@ -329,14 +257,9 @@ const DashboardPage = () => {
         setFollowUpChat([...newChat, { role: 'agent', text: `*Error: ${data.detail || 'Failed'}*` }]);
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
-        setFollowUpChat([...newChat, { role: 'agent', text: '*Error: Intelligence analysis timed out. The agent is busy, please try again in a moment.*' }]);
-      } else {
-        console.error(error);
-        setFollowUpChat([...newChat, { role: 'agent', text: '*Error connecting to server.*' }]);
-      }
+      console.error(error);
+      setFollowUpChat([...newChat, { role: 'agent', text: '*Error connecting to server.*' }]);
     } finally {
-      clearTimeout(timeoutId);
       setIsFollowUpLoading(false);
     }
   };
@@ -505,12 +428,12 @@ const DashboardPage = () => {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={handleRefreshNews}
+                onClick={refreshNews}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-blue-500/20"
+                className={`relative overflow-hidden group flex items-center space-x-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 px-4 py-2 rounded-xl transition-all font-bold text-sm`}
               >
-                <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+                <span>{isRefreshing ? t('ingesting') : t('refreshNews')}</span>
               </button>
 
               <div className="flex items-center bg-gray-900/80 border border-gray-800 rounded-xl p-1">
@@ -558,7 +481,7 @@ const DashboardPage = () => {
             <div className="px-8 py-10 md:px-16">
               <div className="flex items-center space-x-3 mb-6">
                 <span className="px-3 py-1 bg-red-600/10 text-red-500 text-[10px] font-black uppercase tracking-[0.2em] rounded-md border border-red-500/20">
-                  {t(persona.charAt(0).toLowerCase() + persona.slice(1).replace(/\s+/g, ''))}
+                  {persona}
                 </span>
                 <span className="text-gray-500 text-xs font-bold">{selectedArticle.published_date}</span>
               </div>
@@ -575,7 +498,7 @@ const DashboardPage = () => {
                 </div>
                 <div className="mt-8 pt-8 border-t border-gray-800/30">
                    <p className="text-gray-500 text-xs font-bold uppercase tracking-widest text-center opacity-50">
-                     {t('sourceTextHidden')}
+                     Detailed source text is hidden. Use the Intelligence Interrogation bot below to explore specific facts.
                    </p>
                 </div>
               </div>
@@ -585,14 +508,14 @@ const DashboardPage = () => {
               {selectedArticle.link && (
                 <div className="pt-8 border-t border-gray-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{t('originalSource')}</span>
+                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Original Source</span>
                     <a
                       href={selectedArticle.link}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center group/link text-sm"
                     >
-                      {t('etOfficial')}
+                      Economic Times Official
                       <ChevronRight className="w-4 h-4 ml-1 group-hover/link:translate-x-1 transition-transform" />
                     </a>
                   </div>
@@ -616,14 +539,14 @@ const DashboardPage = () => {
                   {t('myFeed')}
                 </h2>
                 <p className="text-gray-500 font-medium">
-                  {t('curatedFor')} <span className="text-red-500/80 font-bold">{t(persona.charAt(0).toLowerCase() + persona.slice(1).replace(/\s+/g, ''))}</span>
+                  Curated intelligence for precisely a <span className="text-red-500/80 font-bold">{persona}</span>
                 </p>
               </div>
               <div className="flex flex-col">
-                <span className="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">{t('intelligenceStatus')}</span>
+                <span className="text-[11px] font-black text-gray-500 uppercase tracking-[0.2em] mb-1">Intelligence Status</span>
                 <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 rounded-full bg-red-800 animate-pulse"></div>
-                  <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">{t('aiRankingActive')}</span>
+                  <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">AI Ranking Active</span>
                 </div>
               </div>
             </div>
@@ -671,7 +594,7 @@ const DashboardPage = () => {
                       <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
                         <span className="flex items-center text-xs font-bold text-gray-500 group-hover:text-gray-300 transition-colors">
                           <BookOpen className="w-3 h-3 mr-2" />
-                          3 {t('minRead')}
+                          3 MIN READ
                         </span>
                         <ChevronRight className="w-5 h-5 text-gray-700 group-hover:text-red-500 group-hover:translate-x-1 transition-all" />
                       </div>
@@ -686,12 +609,12 @@ const DashboardPage = () => {
                   {t('emptyFeedText')}
                 </p>
                 <button
-                  onClick={handleRefreshNews}
+                  onClick={refreshNews}
                   disabled={isRefreshing}
                   className="flex items-center space-x-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl active:scale-95"
                 >
                   <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span>{isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}</span>
+                  <span>{isRefreshing ? t('ingesting') : t('refreshNews')}</span>
                 </button>
               </div>
             )}
@@ -754,7 +677,9 @@ const DashboardPage = () => {
                   <div className="absolute left-[13px] top-2 bottom-2 w-0.5 bg-gray-800/50"></div>
 
                   {[
-                    { name: 'Intelligence Agent', color: 'red', desc: 'Synthesizes context and tailors the final report to your persona', icon: 'bg-red-500' }
+                    { name: 'Researcher', color: 'blue', desc: t('researcherAgent'), icon: 'bg-blue-500' },
+                    { name: 'Synthesis', color: 'purple', desc: t('synthesisAgent'), icon: 'bg-purple-500' },
+                    { name: 'Audit', color: 'green', desc: t('auditAgent'), icon: 'bg-green-500' },
                   ].map((agent, i) => (
                     <div key={i} className="flex items-start space-x-4 relative z-10 transition-all duration-300">
                       <div className={`mt-1.5 w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isLoading ? `${agent.icon}/20 border border-${agent.color}-500/30 animate-pulse` : 'bg-gray-800 border border-gray-700'}`}>
@@ -846,7 +771,7 @@ const DashboardPage = () => {
               ✕
             </button>
             <h2 className="text-4xl font-black text-gray-100 mb-3 tracking-tight">{t('updatePrefs')}</h2>
-            <p className="text-gray-500 text-base font-medium mb-10">{t('refineIdentity')}</p>
+            <p className="text-gray-500 text-base font-medium mb-10">Refine your strategic identity.</p>
 
             <form className="space-y-10" onSubmit={handleOnboardingSubmit}>
               <div className="space-y-8">

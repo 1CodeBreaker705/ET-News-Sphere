@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from security import get_current_user
 import models
 from routes import router
-from vector_store import get_async_qdrant_client, close_qdrant
+from vector_store import get_qdrant_client, close_qdrant
 import os
 
 # In a real app, initialize DB connection here:
@@ -13,7 +13,8 @@ import os
 app = FastAPI(title="ET News-Sphere API")
 
 # Configure CORS for React frontend
-allowed_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:5174,http://localhost:5175,http://localhost:5176")
+# Use CORS_ORIGINS environment variable for production (e.g., CORS_ORIGINS=https://my-app.vercel.app,http://localhost:5173)
+allowed_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000")
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
 
 app.add_middleware(
@@ -30,12 +31,12 @@ app.include_router(router)
 @app.on_event("startup")
 async def startup_event():
     print("Initializing ET News-Sphere API...")
-    await get_async_qdrant_client()
+    get_qdrant_client()
 
 @app.on_event("shutdown")
 async def shutdown_event():
     print("Shutting down ET News-Sphere API...")
-    await close_qdrant()
+    close_qdrant()
 
 @app.get("/")
 def read_root():
@@ -43,8 +44,13 @@ def read_root():
 
 @app.get("/api/profile")
 def get_profile(user: dict = Depends(get_current_user)):
+    """
+    Protected endpoint returning user data extracted from the JWT token.
+    """
     return {
         "user_id": user.get("sub"),
         "email": user.get("email"),
-        "name": user.get("user_metadata", {}).get("full_name", "User")
+        "role": user.get("role"),
+        "app_metadata": user.get("app_metadata"),
+        "user_metadata": user.get("user_metadata")
     }

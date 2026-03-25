@@ -17,61 +17,28 @@ else:
 
 security = HTTPBearer()
 
-import jwt
-
-SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
-
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
-    if not SUPABASE_JWT_SECRET:
-        # Fallback to network if no secret is provided (slower)
-        if not supabase:
-            raise HTTPException(status_code=500, detail="Supabase not configured")
-        try:
-            response = supabase.auth.get_user(token)
-            user_obj = response.user
-            if not user_obj:
-                raise HTTPException(status_code=401, detail="Invalid token")
-            return {"sub": user_obj.id, "email": user_obj.email, "user_metadata": user_obj.user_metadata}
-        except Exception as e:
-            raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
-
-    try:
-        # Offline JWT Validation (Zero Network Handshakes = No _ssl.c errors)
-        # Dynamically get the algorithm from the token header (Supabase uses HS256, but others might differ)
-        unverified_header = jwt.get_unverified_header(token)
-        alg = unverified_header.get("alg", "HS256")
-        
-        payload = jwt.decode(
-            token, 
-            SUPABASE_JWT_SECRET, 
-            algorithms=[alg], 
-            options={"verify_aud": False}
+    if not supabase:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase client is not configured."
         )
-        return {
-            "sub": payload.get("sub"),
-            "email": payload.get("email"),
-            "user_metadata": payload.get("user_metadata", {})
-        }
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
-    except Exception as local_decode_err:
-        # Final fallback: If local decode fails (e.g., malformed token, mismatched algorithm, secret issues),
-        # safely fall back to the Supabase SDK network ping.
-        if supabase:
-            try:
-                response = supabase.auth.get_user(token)
-                user_obj = response.user
-                if user_obj:
-                    return {
-                        "sub": user_obj.id,
-                        "email": user_obj.email,
-                        "user_metadata": user_obj.user_metadata
-                    }
-            except Exception as network_err:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, 
-                    detail=f"Local Auth Failed: {str(local_decode_err)[0:30]} | Network Auth Failed (Possible SSL Timeout): {str(network_err)[0:40]}"
-                )
+    try:
+        # Use Supabase SDK to validate the token natively instead of manual PyJWT
+        response = supabase.auth.get_user(token)
+        user_obj = response.user
         
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Authentication failed: {str(local_decode_err)}")
+        if not user_obj:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+            
+        return {
+            "sub": user_obj.id,
+            "email": user_obj.email,
+            "user_metadata": user_obj.user_metadata
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Authentication failed: {str(e)}"
+        )
