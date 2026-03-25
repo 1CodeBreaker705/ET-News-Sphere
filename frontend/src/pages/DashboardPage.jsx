@@ -135,19 +135,17 @@ const DashboardPage = () => {
         return;
       }
 
-      const response = await fetch(`${getApiUrl()}/api/onboarding`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const { error: upsertError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          display_name: user.user_metadata?.full_name || '',
           persona,
           preferred_language: language
-        })
-      });
+        });
 
-      if (response.ok) {
+      if (!upsertError) {
         if (isOnboarded) {
           // Force logout on settings change to ensure deep caches and feeds reset perfectly
           showToast(t('Your settings have been updated. You will now be logged out to apply changes.'));
@@ -159,7 +157,8 @@ const DashboardPage = () => {
         setIsOnboarded(true);
         setIsEditingPreferences(false);
       } else {
-        console.error("Failed onboarding");
+        console.error("Failed onboarding:", upsertError);
+        showToast("Failed to save profile. Please try again.", true);
       }
     } catch (error) {
       console.error("Error during onboarding:", error);
