@@ -21,9 +21,9 @@ graph TD
     end
 
     subgraph "Intelligence & Data"
-        Gemini["Gemini 3.1 Flash Lite & Embedding 001"]
-        Qdrant[("Qdrant Vector DB")]
-        ET["ET RSS Feeds"]
+        Gemini["Gemini 3.1 Flash Lite & Google GenAI SDK"]
+        Qdrant[("Qdrant Local Vector DB (Hybrid Storage)")]
+        ET["13x ET RSS Feeds"]
     end
 
     ET -->|fetch| Ingest
@@ -52,7 +52,7 @@ sequenceDiagram
     User->>Backend: Request "Student" Briefing
     Backend->>Researcher: Invoke StateGraph
     Researcher->>Qdrant: Semantic Search (Persona Profile)
-    Qdrant-->>Researcher: Top 5 Relevant Articles
+    Qdrant-->>Researcher: Top 3 Relevant Articles (3072-dim Semantic Rank)
     Researcher->>Synthesis: Forward Context
     Synthesis->>Gemini: Draft Briefing (Persona-Specific)
     Gemini-->>Synthesis: Markdown Draft
@@ -61,8 +61,7 @@ sequenceDiagram
     Gemini-->>Audit: Link-Enriched Content
     Audit->>Vernacular: Forward Audited Doc
     Vernacular->>Gemini: Localize & Translate
-    Gemini-->>Vernacular: Final Polish
-    Vernacular-->>Backend: Final State
+    Gemini-->>Backend: Final State
     Backend-->>User: Visual Dashboard Update
 ```
 
@@ -76,7 +75,7 @@ The workflow follows a deterministic state transition (`AgentState`) to maintain
 
 1.  **🔍 Researcher Agent**: 
     - **Role**: Information Retrieval.
-    - **Logic**: Expands the user's Persona (e.g., "Student") into a rich interest profile and queries Qdrant for the top 5 most relevant articles.
+    - **Logic**: Expands the user's Persona (e.g., "Student") into a rich interest profile and queries Qdrant for the top 3 most relevant articles (Balanced for sub-20s synthesis).
 2.  **✍️ Synthesis Agent**:
     - **Role**: Creative Contextualization.
     - **Logic**: Merges fragmented article bodies and tailors the narrative voice to the specific needs of the Persona.
@@ -100,7 +99,12 @@ The workflow follows a deterministic state transition (`AgentState`) to maintain
 
 ### **3. Intelligence Interrogation (Follow-up Chat)**
 - **Feature**: Users can ask questions about any briefing or article.
-- **Under the Hood**: The backend sends the *entire* scraped article text as context to Gemini, even if the user only sees a short summary in the UI.
+- **Under the Hood**: Uses native `ainvoke` with a 60s safety timeout to ensure non-blocking high-speed interaction.
+
+### **4. System Performance & Security**
+- **Offline JWT Decoding**: Backend validates user sessions locally to eliminate the network-bound latency of remote auth checks.
+- **Embedding Engine**: 100% Cloud Intelligence. Exclusively uses the **Google GenAI SDK** for high-precision **3072-dim** vectorization (`text-embedding-004`). This avoids all heavy local binary dependencies (Torch/Rust) and ensures a lightweight, stable deployment.
+- **Dependency Optimization**: The backend has been stripped of the monolithic `langchain` package, using only `langchain-core` and `langgraph` to minimize disk footprint and memory usage.
 
 ---
 

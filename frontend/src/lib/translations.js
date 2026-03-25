@@ -40,7 +40,15 @@ export const translations = {
     backToFeed: "Back to Feed",
     "Intelligence Interrogation": "Intelligence Interrogation",
     "Ask a specific question about this document...": "Ask a specific question about this document...",
-    "Synthesizing Response...": "Synthesizing Response..."
+    "Synthesizing Response...": "Synthesizing Response...",
+    intelligenceStatus: "Intelligence Status",
+    aiRankingActive: "AI Ranking Active",
+    curatedFor: "Curated intelligence for precisely a",
+    minRead: "MIN READ",
+    sourceTextHidden: "Detailed source text is hidden. Use the Intelligence Interrogation bot below to explore specific facts.",
+    refineIdentity: "Refine your strategic identity.",
+    originalSource: "Original Source",
+    etOfficial: "Economic Times Official"
   },
   Hindi: {
     appTitle: "ईटी न्यूज़-स्फ़ियर",
@@ -83,7 +91,15 @@ export const translations = {
     backToFeed: "फ़ीड पर वापस जाएँ",
     "Intelligence Interrogation": "खुफिया पूछताछ",
     "Ask a specific question about this document...": "इस दस्तावेज़ के बारे में एक विशिष्ट प्रश्न पूछें...",
-    "Synthesizing Response...": "प्रतिक्रिया संश्लेषित कर रहा है..."
+    "Synthesizing Response...": "प्रतिक్రియ संश्लेषित कर रहा है...",
+    intelligenceStatus: "इंटेलिजेंस स्थिति",
+    aiRankingActive: "एआई रैंकिंग सक्रिय",
+    curatedFor: "सटीक रूप से आपके लिए क्यूरेट की गई इंटेलिजेंस:",
+    minRead: "मिनट का पाठ",
+    sourceTextHidden: "विस्तृत स्रोत टेक्स्ट छिपा हुआ है। विशिष्ट तथ्यों का पता लगाने के लिए नीचे दिए गए इंटेलिजेंस इंटरोगेशन बॉट का उपयोग करें।",
+    refineIdentity: "अपनी रणनीतिक पहचान को परिष्कृत करें।",
+    originalSource: "मूल स्रोत",
+    etOfficial: "इकोनॉमिक टाइम्स आधिकारिक"
   },
   Tamil: {
     appTitle: "இடி நியூஸ்-ஸ்பியர்",
@@ -124,9 +140,17 @@ export const translations = {
     deepDiveBriefings: "ஆழமான சுருக்கவுரைகள்",
     readFullArticle: "முழு செய்தியையும் படிக்கவும்",
     backToFeed: "ஃபீடுக்கு செல்",
-    "Intelligence Interrogation": "உளவுத்துறை விசாரணை",
+    "Intelligence Interrogation": "புலனாய்வு விசாரணை",
     "Ask a specific question about this document...": "இந்த ஆவணம் பற்றி ஒரு குறிப்பிட்ட கேள்வியைக் கேளுங்கள்...",
-    "Synthesizing Response...": "பதிலை ஒருங்கிணைக்கிறது..."
+    "Synthesizing Response...": "பதிலை ஒருங்கிணைக்கிறது...",
+    intelligenceStatus: "புலனாய்வு நிலை",
+    aiRankingActive: "AI தரவரிசை செயலில் உள்ளது",
+    curatedFor: "உங்களுக்காக பிரத்யேகமாக தொகுக்கப்பட்ட செய்திகள்:",
+    minRead: "நிமிட வாசிப்பு",
+    sourceTextHidden: "விரிவான ஆதார உரை மறைக்கப்பட்டுள்ளது. குறிப்பிட்ட தகவல்களை ஆராய கீழே உள்ள மென்பொருளைப் பயன்படுத்தவும்.",
+    refineIdentity: "உங்கள் மூலோபாய அடையாளத்தை மேம்படுத்தவும்.",
+    originalSource: "அசல் ஆதாரம்",
+    etOfficial: "எகனாமிக் டைம்ஸ் அதிகாரப்பூர்வ"
   },
   Telugu: {
     appTitle: "ఈటీ న్యూస్-స్ఫియర్",
@@ -169,7 +193,15 @@ export const translations = {
     backToFeed: "ఫీడ్‌కు తిరిగి వెళ్లండి",
     "Intelligence Interrogation": "ఇంటెలిజెన్స్ విచారణ",
     "Ask a specific question about this document...": "ఈ పత్రం గురించి ఒక నిర్దిష్ట ప్రశ్న అడగండి...",
-    "Synthesizing Response...": "ప్రతిస్పందనను సంశ్లేషిస్తోంది..."
+    "Synthesizing Response...": "ప్రతిస్పందనను సంశ్లేషిస్తోంది...",
+    intelligenceStatus: "ఇంటెలిజెన్స్ స్థితి",
+    aiRankingActive: "AI ర్యాంకింగ్ యాక్టివ్‌గా ఉంది",
+    curatedFor: "మీ కోసం ప్రత్యేకంగా సేకరించిన సమాచారం:",
+    minRead: "నిమిషాల పఠనం",
+    sourceTextHidden: "వివరణాత్మక మూల పాఠం దాచబడింది. నిర్దిష్ట వాస్తవాలను అన్వేషించడానికి దిగువన ఉన్న బాట్‌ను ఉపయోగించండి.",
+    refineIdentity: "మీ వ్యూహాత్మక గుర్తింపును మెరుగుపరచుకోండి.",
+    originalSource: "అసలు మూలం",
+    etOfficial: "ఎకనామిక్ టైమ్స్ అధికారిక"
   },
   Bengali: {
     appTitle: "ইটি নিউজ-স্ফিয়ার",
@@ -212,7 +244,15 @@ export const translations = {
     backToFeed: "ফিডে ফিরে যান",
     "Intelligence Interrogation": "ইন্টেলিজেন্স জিজ্ঞাসাবাদ",
     "Ask a specific question about this document...": "এই নথি সম্পর্কে একটি নির্দিষ্ট প্রশ্ন জিজ্ঞাসা করুন...",
-    "Synthesizing Response...": "প্রতিক্রিয়া সংশ্লেষণ করা হচ্ছে..."
+    "Synthesizing Response...": "প্রতিক্রিয়া সংশ্লেষণ করা হচ্ছে...",
+    intelligenceStatus: "ইন্টেলিজেন্স স্থিতি",
+    aiRankingActive: "এআই র‍্যাঙ্কিং সক্রিয়",
+    curatedFor: "আপনার জন্য বিশেষভাবে সংগৃহীত সংবাদ:",
+    minRead: "মিনিট পাঠ",
+    sourceTextHidden: "বিস্তারিত উৎস টেক্সট লুকানো আছে। নির্দিষ্ট তথ্য অন্বেষণ করতে নিচের বটটি ব্যবহার করুন।",
+    refineIdentity: "আপনার কৌশলগত পরিচয় পরিমার্জিত করুন।",
+    originalSource: "মূল উৎস",
+    etOfficial: "ইকোনমিক টাইমস অফিসিয়াল"
   }
 };
 
