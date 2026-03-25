@@ -49,7 +49,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const checkUserStatus = async () => {
       try {
         if (!user) {
@@ -60,8 +60,8 @@ const DashboardPage = () => {
         // Add extreme fallback timeout to prevent infinite spinner
         const timeoutFallback = setTimeout(() => {
           if (isMounted && !initialCheckDone) {
-             console.warn("Supabase fetch took too long. Forcing app to initialize.");
-             setInitialCheckDone(true);
+            console.warn("Supabase fetch took too long. Forcing app to initialize.");
+            setInitialCheckDone(true);
           }
         }, 4000);
 
@@ -86,7 +86,7 @@ const DashboardPage = () => {
     };
 
     checkUserStatus();
-    
+
     return () => { isMounted = false; };
   }, [user]);
 
@@ -135,19 +135,17 @@ const DashboardPage = () => {
         return;
       }
 
-      const response = await fetch(`${getApiUrl()}/api/onboarding`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const { error: upsertError } = await supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          display_name: user.user_metadata?.full_name || '',
           persona,
           preferred_language: language
-        })
-      });
+        });
 
-      if (response.ok) {
+      if (!upsertError) {
         if (isOnboarded) {
           // Force logout on settings change to ensure deep caches and feeds reset perfectly
           showToast(t('Your settings have been updated. You will now be logged out to apply changes.'));
@@ -159,7 +157,8 @@ const DashboardPage = () => {
         setIsOnboarded(true);
         setIsEditingPreferences(false);
       } else {
-        console.error("Failed onboarding");
+        console.error("Failed onboarding:", upsertError);
+        showToast("Failed to save profile. Please try again.", true);
       }
     } catch (error) {
       console.error("Error during onboarding:", error);
@@ -203,9 +202,9 @@ const DashboardPage = () => {
       } else {
         const errorMsg = data.detail || 'Failed to generate briefing';
         if (errorMsg.includes('429')) {
-             setBriefingContent(`*The AI Oracle is currently at peak capacity (Rate Limit Hit). Please wait 10 seconds and try again.*`);
+          setBriefingContent(`*The AI Oracle is currently at peak capacity (Rate Limit Hit). Please wait 10 seconds and try again.*`);
         } else {
-             setBriefingContent(`*Error: ${errorMsg}*`);
+          setBriefingContent(`*Error: ${errorMsg}*`);
         }
       }
     } catch (error) {
@@ -225,7 +224,7 @@ const DashboardPage = () => {
   const handleRefreshNews = async () => {
     setIsRefreshing(true);
     setIngestionStatus({ status: 'running', processed_count: 0, scanned_count: 0 });
-    
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -241,7 +240,7 @@ const DashboardPage = () => {
 
       if (response.ok) {
         showToast("Live News Extraction Started in Background!");
-        
+
         // Start Polling for Status
         let lastCount = 0;
         const pollInterval = setInterval(async () => {
@@ -250,21 +249,21 @@ const DashboardPage = () => {
               headers: { "Authorization": `Bearer ${session.access_token}` },
             });
             const statusData = await statusRes.json();
-            
+
             setIngestionStatus(statusData);
-            
+
             if (statusData.processed_count > lastCount) {
-               fetchRecommendations();
-               lastCount = statusData.processed_count;
+              fetchRecommendations();
+              lastCount = statusData.processed_count;
             }
-            
+
             if (statusData.status === 'completed' || statusData.status === 'failed' || statusData.status === 'idle') {
               clearInterval(pollInterval);
               setIsRefreshing(false);
               if (statusData.status === 'completed') {
-                  showToast(`Ingestion Complete! Added ${statusData.processed_count} articles.`);
+                showToast(`Ingestion Complete! Added ${statusData.processed_count} articles.`);
               } else if (statusData.status === 'idle') {
-                  showToast("Ingestion was interrupted by a server restart. Please try again.", true);
+                showToast("Ingestion was interrupted by a server restart. Please try again.", true);
               }
             }
           } catch (err) {
@@ -351,9 +350,9 @@ const DashboardPage = () => {
             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[90%] rounded-2xl p-5 ${msg.role === 'user' ? 'bg-red-900/40 border border-red-800/30 text-white rounded-tr-sm' : 'bg-gray-800/30 border border-gray-700/50 text-gray-300 rounded-tl-sm prose prose-sm prose-invert prose-red'}`}>
                 {msg.role === 'agent' ? (
-                  <ReactMarkdown 
+                  <ReactMarkdown
                     components={{
-                      a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline" />
+                      a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline" />
                     }}
                   >
                     {msg.text}
@@ -569,14 +568,14 @@ const DashboardPage = () => {
 
               <div className="bg-[#161920] rounded-2xl p-2 mb-8 border-0">
                 <div className="text-gray-300 font-medium leading-relaxed whitespace-pre-wrap md:text-lg italic border-l-4 border-red-900/40 pl-6 py-4 bg-red-900/5">
-                  {(selectedArticle.summary && !selectedArticle.summary.includes("Please provide the article text")) 
-                    ? selectedArticle.summary 
+                  {(selectedArticle.summary && !selectedArticle.summary.includes("Please provide the article text"))
+                    ? selectedArticle.summary
                     : "Summary not provided by ET"}
                 </div>
                 <div className="mt-8 pt-8 border-t border-gray-800/30">
-                   <p className="text-gray-500 text-xs font-bold uppercase tracking-widest text-center opacity-50">
-                     {t('sourceTextHidden')}
-                   </p>
+                  <p className="text-gray-500 text-xs font-bold uppercase tracking-widest text-center opacity-50">
+                    {t('sourceTextHidden')}
+                  </p>
                 </div>
               </div>
 
@@ -664,8 +663,8 @@ const DashboardPage = () => {
                         {article.title}
                       </h3>
                       <p className="text-gray-400 text-sm leading-relaxed mb-6 line-clamp-3 flex-1">
-                        {(article.summary && !article.summary.includes("Please provide the article text")) 
-                          ? article.summary 
+                        {(article.summary && !article.summary.includes("Please provide the article text"))
+                          ? article.summary
                           : "Summary not provided by ET"}
                       </p>
                       <div className="flex items-center justify-between pt-4 border-t border-gray-800/50">
@@ -811,7 +810,7 @@ const DashboardPage = () => {
                       <div className="prose prose-invert prose-red max-w-none prose-headings:font-black prose-headings:tracking-tighter prose-p:text-gray-300 prose-p:leading-relaxed">
                         <ReactMarkdown
                           components={{
-                            a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline" />
+                            a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" className="text-red-400 hover:underline" />
                           }}
                         >
                           {briefingContent}
@@ -904,3 +903,5 @@ const DashboardPage = () => {
 };
 
 export default DashboardPage;
+
+
