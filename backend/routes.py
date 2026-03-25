@@ -31,7 +31,9 @@ def update_profile(request: ProfileUpdateRequest, user: dict = Depends(get_curre
     display_name = user.get("user_metadata", {}).get("full_name", "")
     
     try:
-        response = supabase.table("users").select("*").eq("id", user_id).execute()
+        # Use user's token for RLS
+        client = supabase.postgrest.auth(user.get("access_token"))
+        response = client.table("users").select("*").eq("id", user_id).execute()
         
         user_data = {
             "id": user_id,
@@ -42,9 +44,9 @@ def update_profile(request: ProfileUpdateRequest, user: dict = Depends(get_curre
         }
         
         if len(response.data) > 0:
-            supabase.table("users").update(user_data).eq("id", user_id).execute()
+            client.table("users").update(user_data).eq("id", user_id).execute()
         else:
-            supabase.table("users").insert(user_data).execute()
+            client.table("users").insert(user_data).execute()
             
         return {"status": "success", "message": "Profile updated successfully"}
     except Exception as e:
@@ -58,7 +60,9 @@ async def get_briefing(request: BriefingRequest, user: dict = Depends(get_curren
         
     user_id = user.get("sub")
     try:
-        response = supabase.table("users").select("persona", "preferred_language").eq("id", user_id).execute()
+        # Use user's token for RLS
+        client = supabase.postgrest.auth(user.get("access_token"))
+        response = client.table("users").select("persona", "preferred_language").eq("id", user_id).execute()
         if len(response.data) == 0:
              raise HTTPException(status_code=400, detail="User profile not found.")
              
@@ -91,9 +95,12 @@ async def get_recommendations(persona: str = None, target_language: str = None, 
         
     user_id = user.get("sub")
     try:
+        # Use user's token for RLS
+        client = supabase.postgrest.auth(user.get("access_token"))
+        
         # Prioritize persona from query param (for UI reactivity), fallback to profile
         if not persona:
-            response = supabase.table("users").select("persona", "preferred_language").eq("id", user_id).execute()
+            response = client.table("users").select("persona", "preferred_language").eq("id", user_id).execute()
             if len(response.data) > 0:
                 persona = response.data[0].get("persona", "General User")
             else:
@@ -102,7 +109,7 @@ async def get_recommendations(persona: str = None, target_language: str = None, 
         # Pull language from request first (for instant preview), fallback to profile
         preferred_language = target_language
         if not preferred_language:
-            profile_res = supabase.table("users").select("preferred_language").eq("id", user_id).execute()
+            profile_res = client.table("users").select("preferred_language").eq("id", user_id).execute()
             if len(profile_res.data) > 0:
                 preferred_language = profile_res.data[0].get("preferred_language", "English")
             else:
