@@ -1,138 +1,158 @@
 import os
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, Range
 import uuid
+import time
+import functools
+import asyncio
+from typing import List, Optional, Dict
 from dotenv import load_dotenv
-from tenacity import retry, wait_exponential, stop_after_attempt
 
 load_dotenv()
 
-COLLECTION_NAME = "et_news_v2"
+import google.generativeai as genai
 
-_client = None
+COLLECTION_NAME = "et_news_google_v2" # Upgrade to 3072 dimensions
+VECTOR_SIZE = 3072
+_async_client = None
 
-def get_qdrant_client() -> QdrantClient:
-    global _client
-    if _client is None:
-        try:
-            qdrant_url = os.getenv("QDRANT_URL")
-            qdrant_api_key = os.getenv("QDRANT_API_KEY")
+# Configure Google Generative AI
+_raw_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+_api_key = _raw_key.strip('"').strip("'").strip() if _raw_key else None
+genai.configure(api_key=_api_key)
 
-            if qdrant_url and qdrant_api_key:
-                # Connect to Qdrant Cloud
-                print(f"Connecting to Qdrant Cloud at {qdrant_url}...")
-                _client = QdrantClient(url=qdrant_url, api_key=qdrant_api_key)
-            else:
-                # Persistent local storage
-                print("Using local Qdrant database (./qdrant_db)...")
-                _client = QdrantClient(path="./qdrant_db")
+async def get_async_qdrant_client() -> AsyncQdrantClient:
+    global _async_client
+    if _async_client is None:
+        qdrant_url = os.getenv("QDRANT_URL")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
+        if qdrant_url and qdrant_api_key:
+            _async_client = AsyncQdrantClient(url=qdrant_url, api_key=qdrant_api_key)
+        else:
+            _async_client = AsyncQdrantClient(path="./qdrant_db")
             
-            # Setup collection if missing
-            if not _client.collection_exists(COLLECTION_NAME):
-                _client.create_collection(
+        try:
+            exists = await _async_client.collection_exists(COLLECTION_NAME)
+            if not exists:
+                print(f"--- CREATING CLOUD-READY COLLECTION: {COLLECTION_NAME} (768 dims) ---")
+                await _async_client.create_collection(
                     collection_name=COLLECTION_NAME,
-                    vectors_config=VectorParams(size=3072, distance=Distance.COSINE),
+                    vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
                 )
         except Exception as e:
-            print(f"CRITICAL: Qdrant setup failed: {e}")
-            # Fallback to in-memory if disk is locked, to prevent total crash
-            _client = QdrantClient(":memory:")
-            if not _client.collection_exists(COLLECTION_NAME):
-                _client.create_collection(
-                    collection_name=COLLECTION_NAME,
-                    vectors_config=VectorParams(size=3072, distance=Distance.COSINE),
-                )
-    return _client
+            print(f"Initial setup failed: {e}")
+            
+    return _async_client
 
-def close_qdrant():
-    global _client
-    if _client:
-        try:
-            _client.close()
-            _client = None
-        except:
-            pass
-
-@retry(wait=wait_exponential(multiplier=1.5, min=4, max=65), stop=stop_after_attempt(6))
-def _embed_with_retry(model, text):
-    return model.embed_query(text)
-
-def store_articles_in_qdrant(articles):
+def _embed_with_google(texts: List[str], task_type: str = "retrieval_document") -> List[List[float]]:
     """
-    Takes a list of dictionaries (containing title, summary, link, full_text).
-    Generates embeddings for the text and upserts into Qdrant.
+    Calls Google Embeddings API. Loops through texts as gemini-embedding-2-preview 
+    doesn't natively return a list of embeddings for a list of strings in the same way 001 did.
     """
-    if not articles:
-         return
-         
-    client = get_qdrant_client()
-    embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-    
-    points = []
-    
-    for article in articles:
-        # Combine title and text for a richer embedding representation
-        text_to_embed = f"{article.get('title', '')}\n{article.get('summary', '')}\n{article.get('full_text', '')}"
-        
-        # Generate embedding with exponential backoff
-        try:
-             vector = _embed_with_retry(embeddings_model, text_to_embed)
-        except Exception as e:
-             print(f"Failed to embed article {article.get('title')}: {e}")
-             continue
-             
-        # Create a unique, deterministic ID based on the link to prevent duplicates
-        namespace = uuid.NAMESPACE_URL
-        point_id = str(uuid.uuid5(namespace, article.get('link', '')))
-        
-        # Store metadata
-        payload = {
-            "title": article.get("title", ""),
-            "link": article.get("link", ""),
-            "summary": article.get("summary", ""),
-            "published_date": article.get("published_date", ""),
-            "full_text": article.get("full_text", ""),
-            "image_url": article.get("image_url", "")
-        }
-        
-        points.append(PointStruct(id=point_id, vector=vector, payload=payload))
-        
-    # Upsert into Qdrant
-    if points:
-        client.upsert(
-            collection_name=COLLECTION_NAME,
-            points=points
-        )
-        print(f"Successfully stored {len(points)} articles in Qdrant.")
-        
-def search_articles(query, limit=5):
-    """Searches Qdrant for the top relevant articles."""
-    client = get_qdrant_client()
-    embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
-    query_vector = embeddings_model.embed_query(query)
-    
-    search_result = client.query_points(
-        collection_name=COLLECTION_NAME,
-        query=query_vector,
-        limit=limit
-    )
-    
-    results = []
-    for hit in search_result.points:
-        # Return a copy of the payload to prevent accidental mutations of the underlying in-memory DB objects
-        results.append(dict(hit.payload))
-        
-    return results
-
-def is_article_ingested(link: str) -> bool:
-    """Checks if an article link already exists in the vector store."""
-    client = get_qdrant_client()
-    namespace = uuid.NAMESPACE_URL
-    point_id = str(uuid.uuid5(namespace, link))
+    if not texts: return []
     try:
-        # Check if the point exists by ID
-        res = client.retrieve(collection_name=COLLECTION_NAME, ids=[point_id])
+        results = []
+        for text in texts:
+            # Use models/gemini-embedding-2-preview (3072 dimensions)
+            res = genai.embed_content(
+                model="models/gemini-embedding-2-preview",
+                content=text,
+                task_type=task_type
+            )
+            # Handle response structure: it returns {'embedding': [values...]}
+            results.append(res['embedding'])
+        return results
+    except Exception as e:
+        print(f"Google Embedding Error: {e}")
+        # Zero-vector fallback to prevent crash
+        return [[0.0] * VECTOR_SIZE for _ in texts]
+
+async def store_articles_in_qdrant(articles: List[dict]):
+    if not articles: return
+    client = await get_async_qdrant_client()
+    
+    texts = [f"{a.get('title','')}\n{a.get('summary','')}" for a in articles]
+    
+    try:
+        # 1. Batch Embedding (One API call for up to 100 articles)
+        vectors = await asyncio.to_thread(_embed_with_google, texts, "retrieval_document")
+        
+        points = []
+        for i, a in enumerate(articles):
+            p_id = str(uuid.uuid5(uuid.NAMESPACE_URL, a.get('link', '')))
+            payload = {
+                "title": a.get("title", ""),
+                "link": a.get("link", ""),
+                "summary": a.get("summary", ""),
+                "published_date": a.get("published_date", ""),
+                "image_url": a.get("image_url", ""),
+                "created_at": a.get("created_at", int(time.time())),
+                "translations": a.get("translations", {})
+            }
+            points.append(PointStruct(id=p_id, vector=vectors[i], payload=payload))
+            
+        await client.upsert(collection_name=COLLECTION_NAME, points=points)
+        print(f"--- CLOUD STORE: Persisted {len(points)} articles with {VECTOR_SIZE}-dim embeddings ---")
+    except Exception as e:
+        print(f"Cloud store failed: {e}")
+
+async def search_articles(query: str, limit: int = 5) -> List[dict]:
+    client = await get_async_qdrant_client()
+    try:
+        # One API call per search (Minimal)
+        vector = (await asyncio.to_thread(_embed_with_google, [query], "retrieval_query"))[0]
+        res = await client.query_points(collection_name=COLLECTION_NAME, query=vector, limit=limit)
+        return [dict(hit.payload) for hit in res.points]
+    except Exception as e:
+        print(f"Cloud search error: {e}")
+        return []
+
+async def is_article_ingested(link: str) -> bool:
+    client = await get_async_qdrant_client()
+    p_id = str(uuid.uuid5(uuid.NAMESPACE_URL, link))
+    try:
+        res = await client.retrieve(collection_name=COLLECTION_NAME, ids=[p_id])
         return len(res) > 0
-    except:
-        return False
+    except: return False
+
+async def get_all_existing_links(limit: int = 2000) -> set:
+    client = await get_async_qdrant_client()
+    try:
+        points, _ = await client.scroll(collection_name=COLLECTION_NAME, limit=limit, with_payload=True)
+        return {p.payload.get('link') for p in points if p.payload}
+    except: return set()
+
+async def update_article_translations(link: str, lang: str, translated_data: dict):
+    client = await get_async_qdrant_client()
+    p_id = str(uuid.uuid5(uuid.NAMESPACE_URL, link))
+    try:
+        res = await client.retrieve(collection_name=COLLECTION_NAME, ids=[p_id])
+        if not res: return
+        payload = dict(res[0].payload)
+        if "translations" not in payload: payload["translations"] = {}
+        payload["translations"][lang.lower()] = translated_data
+        await client.set_payload(collection_name=COLLECTION_NAME, payload=payload, points=[p_id])
+    except: pass
+
+async def delete_old_articles(days: int = 30):
+    client = await get_async_qdrant_client()
+    cutoff_ts = int(time.time()) - (days * 24 * 60 * 60)
+    try:
+        await client.delete(
+            collection_name=COLLECTION_NAME,
+            points_selector=Filter(must=[FieldCondition(key="created_at", range=Range(lt=cutoff_ts))])
+        )
+    except: pass
+
+async def get_latest_articles_fallback(limit: int = 15) -> List[dict]:
+    client = await get_async_qdrant_client()
+    try:
+        points, _ = await client.scroll(collection_name=COLLECTION_NAME, limit=limit, with_payload=True)
+        return [dict(p.payload) for p in points]
+    except: return []
+
+async def close_qdrant():
+    global _async_client
+    if _async_client:
+        await _async_client.close()
+        _async_client = None

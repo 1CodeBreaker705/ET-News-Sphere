@@ -2,10 +2,21 @@ from typing import TypedDict, List
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from vector_store import search_articles
+import asyncio
 import os
+import time
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
+# Ensure at least one key is present and prioritized
+_raw_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+_api_key = _raw_key.strip('"').strip("'").strip() if _raw_key else None
+
+if _api_key:
+    os.environ["GOOGLE_API_KEY"] = _api_key
+    os.environ["GEMINI_API_KEY"] = _api_key
+
+
 
 # 1. State Definition
 class AgentState(TypedDict):
@@ -17,7 +28,11 @@ class AgentState(TypedDict):
     final_output: str
     image_url: str
 
-llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite-preview", temperature=0.2)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-3.1-flash-lite-preview", 
+    api_key=_api_key,
+    temperature=0.2
+)
 
 def extract_text(content):
     if isinstance(content, str):
@@ -26,151 +41,76 @@ def extract_text(content):
         return "".join([c.get("text", "") for c in content if isinstance(c, dict) and "text" in c])
     return str(content)
 
-# 2. Node 1 - ResearcherAgent
-def researcher_agent(state: AgentState) -> AgentState:
-    print("--- RESEARCHER AGENT ---")
-    query = state["query"]
-    print(f"Searching vector DB for query: {query}")
+# 2. Single-Shot Briefing Generation
+async def generate_user_briefing(query: str, persona: str, target_language: str = "English") -> str:
+    """
+    Generates a hyper-personalized news briefing asynchronousy.
+    """
+    print(f"--- GENERATING ASYNC BRIEFING FOR: {persona} ---")
     
-    # Retrieve top 5 most relevant ET articles
-    results = search_articles(query, limit=5)
+    # 1. Retrieve Context (Async)
+    retrieved_articles = await search_articles(query, limit=3)
     
-    # Extract the first available image_url from retrieved results
     image_url = ""
-    for article in results:
+    for article in retrieved_articles:
         if article.get("image_url"):
             image_url = article["image_url"]
             break
             
-    return {"retrieved_articles": results, "image_url": image_url}
+    if not retrieved_articles:
+        print(f"--- NO DIRECT MATCHES FOR {query}. TRIGGERING FALLBACK SEARCH ---")
+        retrieved_articles = await search_articles("latest trending financial and business news in India", limit=3)
+        if not retrieved_articles:
+            from vector_store import get_latest_articles_fallback
+            retrieved_articles = await get_latest_articles_fallback(limit=3)
+            
+    if not retrieved_articles:
+        return "The briefing engine is currently building its intelligence base. Please try a more general topic like 'Markets' or 'Technology'.", ""
 
-# 3. Node 2 - SynthesisAgent
-def synthesis_agent(state: AgentState) -> AgentState:
-    print("--- SYNTHESIS AGENT ---")
-    retrieved_articles = state["retrieved_articles"]
-    user_persona = state["user_persona"]
-    query = state["query"]
+    # 2. Prepare Context & Sources
+    context_parts = []
+    sources_parts = []
+    for idx, a in enumerate(retrieved_articles, 1):
+        content = a.get('full_text') or a.get('summary') or ""
+        context_parts.append(f"Source {idx}: {a.get('title')}\n{a.get('summary')}\n{content[:1500]}\nURL: {a.get('link')}")
+        sources_parts.append(f"Source {idx}: {a.get('link')}")
     
-    context = ""
-    for idx, article in enumerate(retrieved_articles, 1):
-        context += f"\n[Source {idx}: {article.get('title')} - ({article.get('link')})]\n"
-        context += f"{article.get('summary', '')}\n"
-        context += f"{article.get('full_text', '')[:800]}...\n" # Truncate to save tokens
-        
+    context = "\n\n".join(context_parts)
+    sources_info = "\n".join(sources_parts)
+
+    # 3. Comprehensive Single-Shot Prompt
     prompt = f"""
-    You are an expert financial analyst. A user with the persona '{user_persona}' has asked: '{query}'
+    You are a Senior Financial Editor. 
+    A user with the persona '{persona}' has requested a briefing for: '{query}'
     
-    Based on the following Economic Times articles, write a comprehensive briefing in Markdown.
-    Tailor the focus specifically to the '{user_persona}' persona.
-    Identify any conflicting viewpoints if they exist in the sources.
+    Your Task:
+    1. Write a comprehensive, engaging news briefing in Markdown.
+    2. Tailor the content and tone specifically for the '{persona}' persona.
+    3. Include inline markdown hyperlinks for every factual claim (e.g., [[Source 1]](url)).
+    4. If the target language is NOT English, translate the entire briefing into {target_language}.
+    5. Maintain all Markdown formatting and link structures.
+    6. End with a "### Sources:" section listing all links as: 1. [Source 1](url)
     
     Context Articles:
     {context}
     
-    Draft Briefing:
-    """
-    
-    response = llm.invoke(prompt)
-    draft_briefing = extract_text(response.content)
-    
-    return {"draft_briefing": draft_briefing}
-
-# 4. Node 3 - AuditAgent
-def audit_agent(state: AgentState) -> AgentState:
-    print("--- AUDIT AGENT ---")
-    draft_briefing = state["draft_briefing"]
-    retrieved_articles = state["retrieved_articles"]
-    
-    sources_info = "\n".join([f"Source {idx}: {a.get('link')}" for idx, a in enumerate(retrieved_articles, 1)])
-    
-    prompt = f"""
-    You are an Audit Editor. Review the drafted briefing below.
-    Ensure every factual claim includes an inline markdown hyperlink citation linked to the original URL (e.g., [[Source 1]](url)) based on the provided sources.
-    Do not use text-only citations; all citations in the main text must be clickable hyperlinks that go directly to the source.
-    At the absolute bottom of the briefing, append a new section exactly named "### Sources:" that lists all the referenced sources as clickable markdown links, formatted exactly like:
-    1. [Source 1](url)
-    2. [Source 2](url)
-    
-    Do not change the general factual content of the draft.
-    
-    Sources available:
+    Sources for Citations:
     {sources_info}
     
-    Draft Briefing:
-    {draft_briefing}
-    
-    Audited Briefing:
+    Final Personalized Briefing:
     """
     
-    response = llm.invoke(prompt)
-    audited_briefing = extract_text(response.content)
-    
-    return {"draft_briefing": audited_briefing, "final_output": audited_briefing}
-
-# 5. Node 4 - VernacularAgent
-def vernacular_agent(state: AgentState) -> AgentState:
-    print("--- VERNACULAR AGENT ---")
-    target_language = state["target_language"]
-    audited_briefing = state["draft_briefing"]
-    
-    # If English is requested, skip translation
-    if target_language.lower() in ["english", "en"]:
-        return {"final_output": audited_briefing}
-        
-    print(f"Translating to {target_language}...")
-    
-    prompt = f"""
-    You are an expert context-aware translator for business and financial news.
-    Translate the following briefing into {target_language}.
-    Do not just transliterate; adapt the explanations culturally and provide local context where applicable for {target_language} speakers.
-    Maintain all Markdown formatting and link structures completely intact.
-    
-    Original Briefing:
-    {audited_briefing}
-    
-    Translated Briefing:
-    """
-    
-    response = llm.invoke(prompt)
-    translated_briefing = extract_text(response.content)
-    
-    return {"final_output": translated_briefing}
-
-# 6. Compile the Graph
-workflow = StateGraph(AgentState)
-
-workflow.add_node("researcher", researcher_agent)
-workflow.add_node("synthesis", synthesis_agent)
-workflow.add_node("audit", audit_agent)
-workflow.add_node("vernacular", vernacular_agent)
-
-# Define edges
-workflow.set_entry_point("researcher")
-workflow.add_edge("researcher", "synthesis")
-workflow.add_edge("synthesis", "audit")
-workflow.add_edge("audit", "vernacular")
-workflow.add_edge("vernacular", END)
-
-# Compile the graph into a runnable application
-app = workflow.compile()
-
-# Helper execution function
-def generate_user_briefing(query: str, persona: str, target_language: str = "English") -> str:
-    """
-    Invokes the LangGraph execution for generating a hyper-personalized news briefing.
-    """
-    initial_state = {
-        "query": query,
-        "user_persona": persona,
-        "target_language": target_language,
-        "retrieved_articles": [],
-        "draft_briefing": "",
-        "final_output": "",
-        "image_url": ""
-    }
-    
-    result = app.invoke(initial_state)
-    return result["final_output"], result.get("image_url", "")
+    try:
+        # One single call without mandatory sleeps = Fast
+        print("--- SENDING ASYNC LLM REQUEST ---")
+        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=120.0)
+        return extract_text(response.content), image_url
+    except asyncio.TimeoutError:
+        print("Briefing error: 120s Timeout limit reached.")
+        return "The AI Oracle is currently at peak capacity (Rate Limit Hit). Please wait 10 seconds and try again.", image_url
+    except Exception as e:
+        print(f"Briefing error: {e}")
+        return "The briefing engine is currently under high load.", image_url
 
 import json
 
@@ -185,7 +125,7 @@ PERSONA_PROFILES = {
     "Financial Advisor": "tax planning, asset allocation, global markets, interest rates, rbi guidelines, retirement planning, insurance news, private banking, fixed income, crypto regulation, estate planning, wealth preservation"
 }
 
-def translate_feed_articles(articles: List[dict], target_language: str) -> List[dict]:
+async def translate_feed_articles(articles: List[dict], target_language: str) -> List[dict]:
     print(f"--- BATCH TRANSLATING FEED TO {target_language} ---")
     if not articles:
         return []
@@ -203,7 +143,8 @@ def translate_feed_articles(articles: List[dict], target_language: str) -> List[
     """
     
     try:
-        response = llm.invoke(prompt)
+        print("--- SENDING ASYNC TRANSLATION REQUEST ---")
+        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=180.0)
         text_resp = extract_text(response.content).strip()
         
         if text_resp.startswith("```json"):
@@ -216,17 +157,16 @@ def translate_feed_articles(articles: List[dict], target_language: str) -> List[
         for item in translated_items:
             idx = item.get("id")
             if idx is not None and idx < len(articles):
-                # Clone the dict to avoid mutating shared state
                 articles[idx] = articles[idx].copy()
                 articles[idx]["title"] = item.get("title", articles[idx].get("title"))
                 articles[idx]["summary"] = item.get("summary", articles[idx].get("summary"))
                 
     except Exception as e:
-        print(f"Batch feed translation failed (fallback to English): {e}")
+        print(f"Batch feed translation failed: {e}")
         
     return articles
 
-def get_recommended_articles(persona: str, target_language: str = "English", limit: int = 15) -> List[dict]:
+async def get_recommended_articles(persona: str, target_language: str = "English", limit: int = 15) -> List[dict]:
     """
     Retrieves the most relevant articles for the user's persona by expanding the persona name 
     into a rich interest profile before searching, mapping them to target languages.
@@ -234,14 +174,55 @@ def get_recommended_articles(persona: str, target_language: str = "English", lim
     print(f"--- FETCHING RECOMMENDATIONS FOR: {persona} IN {target_language} ---")
     
     search_query = PERSONA_PROFILES.get(persona, persona)
-    results = search_articles(search_query, limit=limit)
+    results = await search_articles(search_query, limit=limit)
     
-    if target_language.lower() not in ["english", "en"]:
-        results = translate_feed_articles(results, target_language)
+    # Fallback 1: AI-powered general news
+    if not results:
+        try:
+            print(f"--- Persona search for '{persona}' yielded 0 results, falling back to AI latest news ---")
+            results = await search_articles("latest financial and business news from Economic Times", limit=limit)
+        except Exception:
+            results = []
+
+    # Fallback 2: Direct database scroll (Zero-API fallback)
+    if not results:
+        from vector_store import get_latest_articles_fallback
+        print(f"--- AI Search failed (likely rate limit), using zero-API database scroll fallback ---")
+        results = await get_latest_articles_fallback(limit=limit)
+
+    # 3. Translation Hub with Persistence
+    lang_key = target_language.lower()
+    if lang_key not in ["english", "en"] and results:
+        needs_translation = []
+        final_articles = []
+        
+        for a in results:
+            cached = a.get("translations", {}).get(lang_key)
+            if cached:
+                a["title"] = cached.get("title", a["title"])
+                a["summary"] = cached.get("summary", a["summary"])
+                final_articles.append(a)
+            else:
+                needs_translation.append(a)
+        
+        if needs_translation:
+            print(f"--- TRANSLATING {len(needs_translation)} NEW ARTICLES TO {target_language} ---")
+            translated = await translate_feed_articles(needs_translation, target_language)
+            
+            # Persist translated content to DB asynchronously
+            from vector_store import update_article_translations
+            for a in translated:
+                asyncio.create_task(update_article_translations(
+                    a['link'], lang_key, {"title": a['title'], "summary": a['summary']}
+                ))
+            
+            final_articles.extend(translated)
+        
+        return sorted(final_articles, key=lambda x: x.get('created_at', 0), reverse=True)
         
     return results
 
-def answer_followup_question(context_text: str, query: str, history: List[dict] = None) -> str:
+async def answer_followup_question(context_text: str, query: str, history: List[dict] = None) -> str:
     print("--- FOLLOW-UP AGENT ---")
     if not history:
         history = []
@@ -269,10 +250,19 @@ def answer_followup_question(context_text: str, query: str, history: List[dict] 
     Do not hallucinate external facts. Keep your answer concise, engaging, and formatted in clean Markdown.
     """
     
-    response = llm.invoke(prompt)
-    return extract_text(response.content)
+    try:
+        print("--- SENDING ASYNC FOLLOW-UP REQUEST ---")
+        import asyncio
+        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=60.0)
+        return extract_text(response.content)
+    except asyncio.TimeoutError:
+        print("Follow-up error: 60s Timeout limit reached.")
+        return "The AI is currently busy (Rate Limit Hit). Please wait a moment and try again."
+    except Exception as e:
+        print(f"Follow-up error: {e}")
+        return "The AI is currently busy (Rate Limit Hit). Please wait a moment and try again."
 
-def generate_ai_summary(text: str) -> str:
+async def generate_ai_summary(text: str) -> str:
     """
     Generates a concise 2-sentence summary for a news article.
     """
@@ -291,7 +281,9 @@ def generate_ai_summary(text: str) -> str:
     """
     
     try:
-        response = llm.invoke(prompt)
+        print("--- SENDING ASYNC SUMMARY REQUEST ---")
+        import asyncio
+        response = await llm.ainvoke(prompt)
         summary = extract_text(response.content).strip()
         # Clean up any potential markdown formatting if LLM adds it
         summary = summary.replace('**', '').replace('"', '').strip()
