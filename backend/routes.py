@@ -135,7 +135,7 @@ async def run_ingestion():
         await delete_old_articles(30)
         existing_links = await get_all_existing_links(limit=2000)
         
-        categories = ["top_stories", "tech", "markets", "economy-policy", "banking", "industry"]
+        categories = ["top_stories", "tech", "markets", "economy_policy", "banking", "industry"]
         
         for category in categories:
             ingestion_status["current_category"] = category
