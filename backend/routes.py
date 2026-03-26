@@ -125,6 +125,7 @@ async def run_ingestion():
     try:
         from ingestion import fetch_et_rss_feed, scrape_article_text
         from vector_store import store_articles_in_qdrant, get_all_existing_links, delete_old_articles
+        from datetime import datetime, timedelta
         
         ingestion_status["status"] = "running"
         ingestion_status["scanned_count"] = 0
@@ -134,42 +135,82 @@ async def run_ingestion():
         # 1. Bulk Cleanup & Bulk Duplicate Check Optimization
         await delete_old_articles(30)
         existing_links = await get_all_existing_links(limit=2000)
+
+        #  helper: recency filter
+        def is_recent(published_date, hours=48):
+            try:
+                article_time = datetime.strptime(published_date, "%a, %d %b %Y %H:%M:%S %z")
+                now = datetime.now(article_time.tzinfo)
+                return (now - article_time) <= timedelta(hours=hours)
+            except:
+                return False
         
         categories = ["top_stories", "tech", "markets", "economy_policy", "banking", "industry"]
+        all_articles = []
         
         for category in categories:
             ingestion_status["current_category"] = category
             articles = await fetch_et_rss_feed(category)
-            
-            # Take up to 8 from each category to ensure a diverse 15-article feed (total 104 targets)
-            new_articles_queue = [a for a in articles if a['link'] not in existing_links][:8]
-            
-            if not new_articles_queue:
-                # Still increment scanned count by 10 for UI progress
-                ingestion_status["scanned_count"] += 10
+
+            if not articles:
                 continue
 
-            # Process in small parallel batches to stay under rate limits
-            for i in range(0, len(new_articles_queue), 5):
-                batch = new_articles_queue[i:i+5]
-                tasks = [scrape_article_text(a['link']) for a in batch]
-                results = await asyncio.gather(*tasks)
-                
-                successfully_scraped = []
-                for idx, (content, img_url, synopsis) in enumerate(results):
-                    ingestion_status["scanned_count"] += 1
-                    a = batch[idx]
-                    if content:
-                        a['full_text'] = content
-                        a['image_url'] = img_url
-                        if synopsis and (not a.get('summary') or len(a.get('summary','').strip()) < 10):
-                             a['summary'] = synopsis
-                        successfully_scraped.append(a)
-                
-                if successfully_scraped:
-                    await store_articles_in_qdrant(successfully_scraped)
-                    ingestion_status["processed_count"] += len(successfully_scraped)
-                    await asyncio.sleep(1)
+            # filter recent
+            articles = [a for a in articles if is_recent(a.get("published_date", ""))]
+
+            # apply limits
+            if category == "top_stories":
+                articles = articles[:30]
+            else:
+                articles = articles[:10]
+
+            all_articles.extend(articles)
+
+        print(f"After fetch + filter: {len(all_articles)}")
+
+        #  Step 2: Dedup BEFORE scraping
+        unique_articles = {}
+        for a in all_articles:
+            link = a.get("link")
+            if link and link not in unique_articles:
+                unique_articles[link] = a
+
+        articles = list(unique_articles.values())
+
+        #  Step 3: Remove already stored
+        new_articles_queue = [
+            a for a in articles if a["link"] not in existing_links
+        ]
+
+        print(f"After dedup + DB filter: {len(new_articles_queue)}")
+        print(f"Final articles to process: {len(new_articles_queue)}")
+
+        # Process in small parallel batches to stay under rate limits
+        for i in range(0, len(new_articles_queue), 7):  
+             batch = new_articles_queue[i:i+7]
+             tasks = [scrape_article_text(a['link']) for a in batch]
+             results = await asyncio.gather(*tasks)
+
+             successfully_scraped = []
+
+             for a, (content, img_url, synopsis) in zip(batch, results):
+                 ingestion_status["scanned_count"] += 1
+
+                 if not content:
+                    continue
+
+                 a['full_text'] = content
+                 a['image_url'] = img_url
+
+                 if synopsis and (not a.get('summary') or len(a.get('summary', '').strip()) < 10):
+                   a['summary'] = synopsis
+
+                 successfully_scraped.append(a)
+
+             if successfully_scraped:
+                  await store_articles_in_qdrant(successfully_scraped)
+                  ingestion_status["processed_count"] += len(successfully_scraped)
+                  await asyncio.sleep(0.3)
         
         ingestion_status["status"] = "completed"
         ingestion_status["last_run"] = time.strftime("%Y-%m-%d %H:%M:%S")
