@@ -150,9 +150,17 @@ async def delete_old_articles(days: int = 30):
 async def get_latest_articles_fallback(limit: int = 15) -> List[dict]:
     client = await get_async_qdrant_client()
     try:
-        points, _ = await client.scroll(collection_name=COLLECTION_NAME, limit=limit, with_payload=True)
-        return [dict(p.payload) for p in points]
-    except: return []
+        points, _ = await client.scroll(
+            collection_name=COLLECTION_NAME,
+            limit=limit,
+            with_payload=True
+        )
+        articles = [dict(p.payload) for p in points if p.payload]
+        # Sort by newest
+        return sorted(articles, key=lambda x: x.get("created_at", 0), reverse=True)
+    except Exception as e:
+        print(f"Fallback error: {e}")
+        return []
 
 async def close_qdrant():
     global _async_client
