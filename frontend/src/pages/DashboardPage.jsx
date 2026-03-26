@@ -526,7 +526,7 @@ const DashboardPage = () => {
                 className="hidden lg:flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-blue-500/20"
               >
                 <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                {isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}
+                {isRefreshing ? `Processing ${ingestionStatus.processed_count} articles...` : t('refreshNews')}
               </button>
 
               <div className="flex items-center bg-gray-900/80 border border-gray-800 rounded-xl p-1">
@@ -560,7 +560,7 @@ const DashboardPage = () => {
           >
             <RefreshCw className={`w-4 h-4 md:w-5 md:h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="text-sm">
-              {isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}
+              {isRefreshing ? `Processing ${ingestionStatus.processed_count} articles...` : t('refreshNews')}
             </span>
           </button>
         </div>
