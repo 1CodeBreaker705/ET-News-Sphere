@@ -10,17 +10,9 @@ RSS_FEEDS = {
     "top_stories": "https://economictimes.indiatimes.com/rssfeedstopstories.cms",
     "tech": "https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms",
     "markets": "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
-    "politics": "https://economictimes.indiatimes.com/news/politics/and-nation/rssfeeds/2733220.cms",
-    "small_biz": "https://economictimes.indiatimes.com/small-biz/rssfeeds/5429640.cms",
     "industry": "https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms",
-    "jobs_edu": "https://economictimes.indiatimes.com/jobs/rssfeeds/107032.cms",
-    "software": "https://economictimes.indiatimes.com/tech/software-services/rssfeeds/13357598.cms",
     "economy_policy": "https://economictimes.indiatimes.com/news/economy/policy/rssfeeds/13358050.cms",
-    "economy": "https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380685.cms",
-    "international": "https://economictimes.indiatimes.com/news/international/world-news/rssfeeds/85847812.cms",
     "banking": "https://economictimes.indiatimes.com/industry/banking/finance/rssfeeds/13358319.cms",
-    "wealth": "https://economictimes.indiatimes.com/wealth/personal-finance/rssfeeds/81582969.cms",
-    "panache": "https://economictimes.indiatimes.com/magazines/panache/rssfeeds/22756855.cms"
 }
 
 async def fetch_et_rss_feed(category="top_stories") -> List[dict]:
