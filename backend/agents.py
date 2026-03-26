@@ -174,21 +174,35 @@ async def get_recommended_articles(persona: str, target_language: str = "English
     print(f"--- FETCHING RECOMMENDATIONS FOR: {persona} IN {target_language} ---")
     
     search_query = PERSONA_PROFILES.get(persona, persona)
-    results = await search_articles(search_query, limit=limit)
+
+    # CHANGE 1: Fetch more candidates (better selection, same cost)
+    results = await search_articles(search_query, limit=30)
     
     # Fallback 1: AI-powered general news
     if not results:
         try:
             print(f"--- Persona search for '{persona}' yielded 0 results, falling back to AI latest news ---")
-            results = await search_articles("latest financial and business news from Economic Times", limit=limit)
+            results = await search_articles(
+                "latest financial and business news from Economic Times",
+                limit=30
+            )
         except Exception:
             results = []
 
-    # Fallback 2: Direct database scroll (Zero-API fallback)
+    # Fallback 2: Direct database scroll (already optimized)
     if not results:
         from vector_store import get_latest_articles_fallback
         print(f"--- AI Search failed (likely rate limit), using zero-API database scroll fallback ---")
         results = await get_latest_articles_fallback(limit=limit)
+
+    # CHANGE 2: Deduplicate results
+    unique = {}
+    for a in results:
+        link = a.get("link")
+        if link and link not in unique:
+            unique[link] = a
+
+    results = list(unique.values())
 
     # 3. Translation Hub with Persistence
     lang_key = target_language.lower()
@@ -209,18 +223,31 @@ async def get_recommended_articles(persona: str, target_language: str = "English
             print(f"--- TRANSLATING {len(needs_translation)} NEW ARTICLES TO {target_language} ---")
             translated = await translate_feed_articles(needs_translation, target_language)
             
-            # Persist translated content to DB asynchronously
+            # FIX: Ensure translations are saved properly
             from vector_store import update_article_translations
-            for a in translated:
-                asyncio.create_task(update_article_translations(
-                    a['link'], lang_key, {"title": a['title'], "summary": a['summary']}
-                ))
+            await asyncio.gather(*[
+                update_article_translations(
+                    a['link'], lang_key,
+                    {"title": a['title'], "summary": a['summary']}
+                )
+                for a in translated
+            ])
             
             final_articles.extend(translated)
         
-        return sorted(final_articles, key=lambda x: x.get('created_at', 0), reverse=True)
-        
-    return results
+        # CHANGE 3: Sort + return best 15
+        return sorted(
+            final_articles,
+            key=lambda x: x.get('created_at', 0),
+            reverse=True
+        )[:limit]
+
+    # CHANGE 3: Sort + return best 15 (normal case)
+    return sorted(
+        results,
+        key=lambda x: x.get('created_at', 0),
+        reverse=True
+    )[:limit]
 
 async def answer_followup_question(context_text: str, query: str, history: List[dict] = None) -> str:
     print("--- FOLLOW-UP AGENT ---")
