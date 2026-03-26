@@ -86,6 +86,7 @@ async def store_articles_in_qdrant(articles: List[dict]):
                 "title": a.get("title", ""),
                 "link": a.get("link", ""),
                 "summary": a.get("summary", ""),
+                "full_text": a.get("full_text", ""),
                 "published_date": a.get("published_date", ""),
                 "image_url": a.get("image_url", ""),
                 "created_at": a.get("created_at", int(time.time())),
