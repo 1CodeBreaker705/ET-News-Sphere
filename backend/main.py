@@ -41,9 +41,9 @@ async def shutdown_event():
 def read_root():
     return {"message": "Welcome to ET News-Sphere API"}
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
-    return {"status": "ok"}    
+    return {"status": "ok"}
 
 @app.get("/api/profile")
 def get_profile(user: dict = Depends(get_current_user)):
