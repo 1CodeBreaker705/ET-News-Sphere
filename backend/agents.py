@@ -6,6 +6,7 @@ import asyncio
 import os
 import time
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv(override=True)
 # Ensure at least one key is present and prioritized
@@ -166,6 +167,18 @@ async def translate_feed_articles(articles: List[dict], target_language: str) ->
         
     return articles
 
+
+def parse_date(date_str):
+    for fmt in [
+        "%a, %d %b %Y %H:%M:%S %z",   # RSS format (ET uses this)
+        "%Y-%m-%dT%H:%M:%SZ"          # ISO fallback
+    ]:
+        try:
+            return datetime.strptime(date_str, fmt).timestamp()
+        except:
+            continue
+    return 0
+
 async def get_recommended_articles(persona: str, target_language: str = "English", limit: int = 15) -> List[dict]:
     """
     Retrieves the most relevant articles for the user's persona by expanding the persona name 
@@ -238,14 +251,14 @@ async def get_recommended_articles(persona: str, target_language: str = "English
         # CHANGE 3: Sort + return best 15
         return sorted(
             final_articles,
-            key=lambda x: x.get('created_at', 0),
+            key=lambda x: parse_date(x.get('published_date', "")),
             reverse=True
         )[:limit]
 
     # CHANGE 3: Sort + return best 15 (normal case)
     return sorted(
         results,
-        key=lambda x: x.get('created_at', 0),
+        key=lambda x: parse_date(x.get('published_date', "")),
         reverse=True
     )[:limit]
 
