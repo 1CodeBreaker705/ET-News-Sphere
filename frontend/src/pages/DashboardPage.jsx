@@ -720,7 +720,7 @@ const DashboardPage = () => {
                   className="flex items-center space-x-3 bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl active:scale-95"
                 >
                   <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  <span>{isRefreshing ? `${t('ingesting')} (${ingestionStatus.scanned_count}/104)...` : t('refreshNews')}</span>
+                  <span>{isRefreshing ? `Processing ${ingestionStatus.processed_count} articles...` : t('refreshNews')}</span>
                 </button>
               </div>
             )}
