@@ -1,118 +1,128 @@
-# 🏛️ ET News-Sphere: System Architecture
+# 🏛️ ET News-Sphere: Full-Project Architecture (End-to-End)
 
-This document outlines the technical architecture of **ET News-Sphere**, highlighting the multi-agent orchestration, data pipeline, and the "Active Intelligence" framework.
+This document provides a comprehensive, high-fidelity roadmap of **ET News-Sphere**, tracing the complete project lifecycle from user authentication to AI-driven intelligence delivery.
 
 ---
 
-## 🏗️ High-Level Architecture
-ET News-Sphere is built on a modern **RAG (Retrieval-Augmented Generation)** stack, using a decoupled micro-architecture where the frontend communicates with a FastAPI backend powered by LangGraph.
+##  Full-Project Roadmap (User Journey)
+The following diagram maps the entire flow, from initial splash screens through to interactive AI synthesis.
 
 ```mermaid
 graph TD
-    subgraph "Frontend (React + Vite)"
-        UI["Glassmorphism Dashboard"]
-        Auth["Supabase Auth"]
+    %% Entry Layer
+    subgraph "1. Entry & Security (Supabase)"
+        Login["LoginPage / Register"]
+        Supabase["Supabase Auth (JWT)"]
+        Onboarding["Persona Onboarding (Users Table)"]
     end
 
-    subgraph "Backend (FastAPI)"
-        API["REST Endpoints"]
-        LG["LangGraph Orchestrator"]
-        Ingest["Ingestion Worker"]
+    %% Routing Bridge
+    Login --> Supabase
+    Supabase --> Onboarding
+    Onboarding -->|Sync| Dashboard
+
+    %% Core Views
+    subgraph "2. The Discovery Layer (Persona Feed)"
+        Dashboard["Main Dashboard (Feed View)"]
+        Recommend["AI Recommendation Engine (Qdrant Search)"]
+        ArticleList["Top 15 Relevant & Latest Articles"]
+        ArticleChat["Interrogation Agent (Gemini 3.1 Flash Lite)"]
     end
 
-    subgraph "Intelligence & Data"
-        Gemini["Gemini 3.1 Flash Lite & Google GenAI SDK"]
-        Qdrant[("Qdrant Local Vector DB (Hybrid Storage)")]
-        ET["13x ET RSS Feeds"]
+    %% Intelligence Layer
+    subgraph "3. The Analysis Layer (Intelligence Agent)"
+        BriefingView["Briefing Section (Deep Dive)"]
+        IntelAgent["Intelligence Agent (Internal Orchestration)"]
+        subgraph "Internal Sub-Agents"
+            R["🔍 Researcher Agent (3-Source Retrieval)"]
+            S["✍️ Synthesis Agent (Contextual Drafting)"]
+            A["🛡️ Audit Agent (Citations & Linking)"]
+            V["🌐 Vernacular Agent (Multi-lang Localization)"]
+        end
+        BriefingChat["Briefing Interrogation Chat (Gemini 3.1 Flash Lite)"]
     end
 
-    ET -->|fetch| Ingest
-    Ingest -->|vectorize| Qdrant
-    UI -->|request| API
-    API -->|invoke| LG
-    LG -->|RAG| Qdrant
-    LG -->|inference| Gemini
-    Auth -->|jwt| API
+    %% Data & Memory Layer
+    subgraph "4. Data Architecture"
+        RSS["6x Live ET RSS Feeds"]
+        Scraper["BeautifulSoup4 Scraper (Cleaner)"]
+        Q[("Qdrant High-Precision Vector Memory")]
+    end
+
+    %% Vernacular Engine
+    subgraph "5. Vernacular News Engine"
+        UI_Trans["Persistent UI Translation"]
+        Content_Trans["Article & Briefing Localization"]
+        Chat_Trans["Native Multi-Lingual Chat"]
+    end
+
+    %% Key Logical Flows
+    Dashboard -->|FETCH persona data| Recommend
+    Recommend -->|Semantic Match 3072-dim| Q
+    Recommend -->|Return Top 15| ArticleList
+    ArticleList -->|Individual Context| ArticleChat
+
+    Dashboard -->|POST /api/briefing| IntelAgent
+    IntelAgent --> R
+    R -->|Fetch 3 Relevant| Q
+    R --> S --> A --> V
+    V -->|MD + Links| BriefingView
+    BriefingView -->|Full Synthesis Context| BriefingChat
+
+    Dashboard -->|Sync Language| UI_Trans
+    ArticleList -->|Translate Content| Content_Trans
+    BriefingView -->|Translate Briefing| Content_Trans
+    ArticleChat -->|Native Response| Chat_Trans
+    BriefingChat -->|Native Response| Chat_Trans
+
+    RSS -->|Ingest| Scraper
+    Scraper -->|Upsert Vectors| Q
 ```
 
-### **The Intelligence Lifecycle (Sequence)**
-The following diagram illustrates how the agents transform raw news into a personalized briefing:
+---
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Backend
-    participant Qdrant
-    participant Researcher
-    participant Synthesis
-    participant Audit
-    participant Vernacular
-    participant Gemini
+## 🤖 Core Intelligence Systems and Their Roles
 
-    User->>Backend: Request "Student" Briefing
-    Backend->>Researcher: Invoke StateGraph
-    Researcher->>Qdrant: Semantic Search (Persona Profile)
-    Qdrant-->>Researcher: Top 3 Relevant Articles (3072-dim Semantic Rank)
-    Researcher->>Synthesis: Forward Context
-    Synthesis->>Gemini: Draft Briefing (Persona-Specific)
-    Gemini-->>Synthesis: Markdown Draft
-    Synthesis->>Audit: Forward Draft
-    Audit->>Gemini: Verify Claims & Add Links
-    Gemini-->>Audit: Link-Enriched Content
-    Audit->>Vernacular: Forward Audited Doc
-    Vernacular->>Gemini: Localize & Translate
-    Gemini-->>Backend: Final State
-    Backend-->>User: Visual Dashboard Update
-```
+### **1. AI Recommendation Engine (The Persona Feed)**
+The **Persona Feed** uses advanced vector search to eliminate information overload.
+-   **Discovery**: The system expands your Persona (e.g., "Student") into a rich interest profile.
+-   **Precision**: It performs a semantic search across **Qdrant** using 3072-dimensional embeddings, fetching the **Top 15** articles that are both latest and highly relevant to your professional needs.
+-   **Deep Context Chat**: Each article in the feed includes a dedicated **Interrogation Agent**, allowing you to ask follow-up questions about the entire article body using Gemini 3.1 Flash Lite.
+
+### **2. The Intelligence Agent (The Briefing Engine)**
+The **Intelligence Agent** is the "Newsroom Core" of the project. It provides deep-dive briefings by orchestrating four functional sub-agents:
+1.  **🔍 Researcher Agent**: Pulls the 3 most relevant Economic Times articles based on the active topic.
+2.  **✍️ Synthesis Agent**: Merges fragmented data points into a cohesive, persona-driven report.
+3.  **🛡️ Audit Agent**: Ensures every claim is verified and linked back to official ET coverage.
+4.  **🌐 Vernacular Agent**: A sub-role representing the bridge to our broader Translation Engine.
+-   **Briefing Chat**: Like individual articles, the synthesized briefings support their own **Interrogation Chat**, allowing for deep thematic exploration.
+
+### **3. Vernacular News Engine**
+The **Vernacular News Engine** is a cross-platform system that ensures the entire experience is accessible in the user's preferred language.
+-   **Persistence UI Translation**: Translates and persists the entire dashboard and navigation elements based on the User DNA (Language setting) stored in Supabase.
+-   **Content Localization**: Performs high-fidelity translation of every individual article and the synthesized briefings into **English, Hindi, Tamil, Telugu, and Bengali**.
+-   **Multi-Lingual Chat**: The interrogation agents (Gemini 3.1 Flash Lite) are configured to detect and respond in the user's selected language, ensuring the follow-up questions feel native and natural.
 
 ---
 
-## 🤖 The Multi-Agent Newsroom (LangGraph)
-Our core intelligence is guided by a **Stateful Graph** that ensures news is not just "summarized" but "audited" and "personalized."
+##  Technical Foundation Layer and Tool Integration
 
-### **Agent Roles & Communication**
-The workflow follows a deterministic state transition (`AgentState`) to maintain context:
+- **Authentication & Profiles**: Powered by **Supabase**. Persona data and target languages are persisted in relational tables to ensure cross-device consistency.
+- **Memory Layer**: Powered by **Qdrant & Google GenAI SDK**. We use google embeddings `google-embedding-2` to create a high-precision vector space where "meaning" is indexed alongside "text."
+- **Inference Engine**: Powered by **Google Gemini 3.1 Flash Lite**. Chosen for its 128k context window and high speed, making "Analysis-on-the-Fly" possible.
+- **The Ingestion Pipeline**: Built with **BeautifulSoup4**. A custom scraper that strips "junk" (ads, related links) and extracts high-quality Synopsis or Open Graph (OG) Description for summary view. **Deterministic Deduplication** where articles are indexed by a URL-based UUID to prevent duplicate entries.
+- **Strategic Vector Search**: Implements **Dynamic Persona Mapping**. We map simple roles (e.g., "Retail Investor") to deep professional interest profiles (e.g., "Stock trends, Mutual funds") to ensure high-fidelity semantic discovery beyond keyword matching.
 
-1.  **🔍 Researcher Agent**: 
-    - **Role**: Information Retrieval.
-    - **Logic**: Expands the user's Persona (e.g., "Student") into a rich interest profile and queries Qdrant for the top 3 most relevant articles (Balanced for sub-20s synthesis).
-2.  **✍️ Synthesis Agent**:
-    - **Role**: Creative Contextualization.
-    - **Logic**: Merges fragmented article bodies and tailors the narrative voice to the specific needs of the Persona.
-3.  **🛡️ Audit Agent**:
-    - **Role**: Factual Integrity.
-    - **Logic**: Scans the draft for claims and enforces clickable Markdown citations `[[Source X]](url)` back to original ET articles.
-4.  **🌐 Vernacular Agent**:
-    - **Role**: Localization.
-    - **Logic**: Performs context-aware translation into Hindi, Tamil, Telugu, or Bengali while preserving all formatting and links.
-
----
-
-## 🚥 Tool Integrations & Data Flow
-
-### **1. The Ingestion Pipeline**
-- **BeautifulSoup4**: Custom scraper that strips "junk" (ads, related links) and extracts the high-quality **Synopsis** or **Open Graph (OG) Description** for the summary view.
-- **Deterministic Deduplication**: Articles are indexed by a URL-based UUID to prevent duplicate news entries.
-
-### **2. Strategic Vector Search**
-- **Dynamic Persona Mapping**: We map simple roles to professional interest profiles (e.g., "Retail Investor" -> "Stock trends, Mutual funds, Wealth management") to provide deeper semantic matches than a simple keyword search.
-
-### **3. Intelligence Interrogation (Follow-up Chat)**
-- **Feature**: Users can ask questions about any briefing or article.
-- **Under the Hood**: Uses native `ainvoke` with a 60s safety timeout to ensure non-blocking high-speed interaction.
-
-### **4. System Performance & Security**
-- **Offline JWT Decoding**: Backend validates user sessions locally to eliminate the network-bound latency of remote auth checks.
-- **Embedding Engine**: 100% Cloud Intelligence. Exclusively uses the **Google GenAI SDK** for high-precision **3072-dim** vectorization (`text-embedding-004`). This avoids all heavy local binary dependencies (Torch/Rust) and ensures a lightweight, stable deployment.
-- **Dependency Optimization**: The backend has been stripped of the monolithic `langchain` package, using only `langchain-core` and `langgraph` to minimize disk footprint and memory usage.
-
----
-
-## 🛡️ Error Handling & Resilience
-- **Database Safety**: Qdrant client implements a fallback to `:memory:` storage if the local disk is locked by another process.
-- **API Exponential Backoff**: Uses the `tenacity` library to handle rate-limiting or transient network failures during embedding generation.
-- **Graceful Failbacks**: If the Vernacular Agent fails to translate a batch of news (e.g., API overload), the system gracefully falls back to the original English content to ensure the UI remains functional.
-- **Scraper Robustness**: If an article lacks a formal summary, the scraper cascades through `OG Description` -> `Meta Description` -> `Synopsis` -> `Auto-Summarization` to ensure the user never sees an empty card.
+### **Error Handling & Resilience**
+- **Database Safety**: Qdrant client implements an automatic fallback to `:memory:` storage if the local disk is locked by another process, ensuring the application remains operational.
+- **API Exponential Backoff**: Integrates the `tenacity` library to handle rate-limiting and transient network failures during embedding generation and LLM calls.
+- **Graceful Failbacks (Vernacular)**: If the Vernacular Agent fails to translate content (e.g., API overload or quota limits), the system gracefully falls back to the original English content to ensure UI functionality.
+- **Scraper Robustness**: The ingestion engine uses a cascading extraction logic (OG Description -> Meta Description -> Synopsis -> Auto-Summarization) to ensure articles never display empty cards.
+- **Cloud-First Intelligence**: Exclusively uses the Google GenAI SDK for vectorization. By avoiding heavy local binary dependencies (like Torch or Rust-based tokenizers), the system maintains a lightweight, cross-platform stable deployment.
+- **Dependency Optimization**: Stripped of the monolithic `langchain` package, the backend uses only `langchain-core` and `langgraph` to minimize disk footprint and memory overhead.
+- **Auth Safety**: JWTs are verified locally at the backend to prevent API latency during auth checks.
+- **Content Resilience**: If an RSS feed is down, the system cascades into our internal database "Scroll" fallback to ensure the user always sees news.
 
 ---
 *Prepared for the ET Gen AI Hackathon 2026*
+*Built with ❤️ for Technical Excellence*
