@@ -4,6 +4,7 @@
 > **Team Name:** Bit by Bit  
 > **Project Title:** ET News-Sphere  
 > **Team Members:** Aryan Silswal, Ranjan Singh
+>
 > **Deployed website:** https://et-news-sphere.vercel.app
 
 ---
