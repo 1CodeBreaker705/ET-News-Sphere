@@ -73,7 +73,7 @@ Follow these steps to experience the future of news on your local machine.
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # Windows: venv\\Scripts\\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt 
 
 # Create .env with:
