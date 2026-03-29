@@ -77,9 +77,10 @@ git-bash: source venv/Scripts/activate  Windows: venv\Scripts\activate (CMD/Powe
 pip install -r requirements.txt 
 
 # Create .env with:
-# GEMINI_API_KEY=your_key
-# SUPABASE_URL=your_url
-# SUPABASE_ANON_KEY=your_anon_key
+# GOOGLE_API_KEY="your_key"
+# SUPABASE_URL="your_url"
+# SUPABASE_ANON_KEY="your_anon_key"
+# CORS_ORIGINS="http://localhost:5173"
 # Optional: QDRANT_URL & QDRANT_API_KEY for Cloud Qdrant
 
 python -m uvicorn main:app --reload
@@ -91,9 +92,9 @@ cd frontend
 npm install
 
 # Create .env with:
-# VITE_SUPABASE_URL=your_url
-# VITE_SUPABASE_ANON_KEY=your_anon_key
-# VITE_API_URL=http://localhost:8000
+# VITE_SUPABASE_URL="your_url"
+# VITE_SUPABASE_ANON_KEY="your_anon_key"
+# VITE_API_URL="http://localhost:8000"
 
 npm run dev
 ```
