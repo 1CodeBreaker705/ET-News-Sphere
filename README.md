@@ -6,6 +6,7 @@
 > **Team Members:** Aryan Silswal, Ranjan Singh
 >
 > **Deployed website:** https://et-news-sphere.vercel.app
+> **Demo video:**: https://drive.google.com/file/d/1bbTsRp-yrMh2wulsLSlGy5mZhtIeMWTT/view?usp=sharing
 
 ---
 
