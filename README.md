@@ -49,34 +49,34 @@ True Business inclusion requires language-native understanding, not just raw tra
 
 ## 📸 Screenshots
 
-### 🧬 Landing Page
+### Landing Page
 ![Landing Page](./screenshots/landingPage.png)
 
-### 🧬 My ET – Persona Feed
+### My ET – Persona Feed
 ![Persona Feed](./screenshots/MyPersonaFeed.png)
 ![Persona Feed](./screenshots/MyPersonaFeed2.png)
 ![Persona Feed](./screenshots/MyPersonaFeed3.png)
 
-### 🧭 DeepDive Briefings
+### DeepDive Briefings
 ![DeepDive Briefings](./screenshots/deepDiveBriefings.png)
 ![DeepDive Briefings](./screenshots/deepDiveBriefings2.png)
 ![DeepDive Briefings](./screenshots/deepDiveBriefings3.png)
 ![DeepDive Briefings](./screenshots/deepDiveBriefings4.png)
 
 
-### 💬 Article View and AI Article Chat
+### Article View and AI Article Chat
 ![ArticleView](./screenshots/articleView.png)
 ![ArticleView](./screenshots/articleView2.png)
 ![ArticleView](./screenshots/articleView3.png)
 
-### 🌏 Vernacular News Translation
+### Vernacular News Translation
 ![Vernacular News](./screenshots/languages.png)
 ![Vernacular News](./screenshots/vernacular.png)
 
-### 👤 Persona Selection
+### Persona Selection
 ![Persona Selection](./screenshots/categories.png)
 
-### 📱 Mobile Experience
+### Mobile Experience
 ![Mobile Experience](./screenshots/mobile.png)
 ![Mobile Experience](./screenshots/mobile2.png)
 ![Mobile Experience](./screenshots/mobile3.png)
